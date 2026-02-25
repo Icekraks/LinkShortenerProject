@@ -38,6 +38,7 @@ pnpm dev
 - `pnpm db:apply` applies schema directly to `DATABASE_URL`
 - `pnpm db:init` creates `link_shortener` and applies `apps/db/schema.sql`
 - `pnpm db:reset` drops and recreates `link_shortener` + tables
+- `pnpm db:cleanup` deletes expired links (`expires_at <= NOW()`)
 
 `db:setup` and `db:apply` auto-load env vars from `.env`, `.env.local`, and `apps/web/.env.local`.
 
@@ -46,10 +47,18 @@ pnpm dev
 The `links` table includes:
 
 - `id` (BIGSERIAL primary key)
-- `short_code` (auto-generated base62, 4 chars)
+- `short_code` (auto-generated base52 letters only, 4 chars)
 - `original_url` (URL before shortening)
 - `created_at` (creation timestamp)
 - `expires_at` (expiry timestamp)
+
+## Optional daily cleanup
+
+Run this once per day to remove expired rows:
+
+```bash
+pnpm db:cleanup
+```
 
 ## App URL
 

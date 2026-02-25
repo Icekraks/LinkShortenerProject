@@ -5,7 +5,7 @@ IMMUTABLE
 STRICT
 AS $$
 DECLARE
-  alphabet CONSTANT TEXT := '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  alphabet CONSTANT TEXT := 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   num BIGINT := value;
   output TEXT := '';
   remainder INTEGER;
