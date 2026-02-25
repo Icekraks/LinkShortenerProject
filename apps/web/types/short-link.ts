@@ -1,6 +1,6 @@
 export type CreateShortLinkBody = {
   originalUrl?: string;
-  expiresAt?: string | null;
+  expiryHours?: number;
 };
 
 export type CreateShortLinkSuccessResponse = {
@@ -8,15 +8,14 @@ export type CreateShortLinkSuccessResponse = {
   shortCode: string;
   originalUrl: string;
   createdAt: string;
-  expiresAt: string | null;
+  expiryHours: number;
   shortPath: string;
   shortUrl: string;
 };
 
 export type CreateShortLinkErrorResponse = {
   error: string;
+  retryAfterSeconds?: number;
 };
 
-export type CreateShortLinkResponse =
-  | CreateShortLinkSuccessResponse
-  | CreateShortLinkErrorResponse;
+export type CreateShortLinkResponse = CreateShortLinkSuccessResponse | CreateShortLinkErrorResponse;

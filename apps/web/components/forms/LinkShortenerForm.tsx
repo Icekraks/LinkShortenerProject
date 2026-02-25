@@ -70,6 +70,7 @@ const LinkShortenerForm = () => {
         },
         body: JSON.stringify({
           originalUrl: normalizedUrl,
+          expiryHours: values.value.expiryHours,
         }),
       });
 
@@ -106,7 +107,6 @@ const LinkShortenerForm = () => {
     }
   };
 
-  console.log(form);
   return !createdLink ? (
     <form
       onSubmit={(e) => {

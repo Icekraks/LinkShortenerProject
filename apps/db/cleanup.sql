@@ -5,3 +5,6 @@ WITH deleted AS (
   RETURNING id
 )
 SELECT COUNT(*) AS deleted_count FROM deleted;
+
+DELETE FROM rate_limit_events
+WHERE created_at < NOW() - INTERVAL '7 days';
