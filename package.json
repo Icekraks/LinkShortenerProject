@@ -1,26 +1,20 @@
 {
-  "name": "link-shortener-app",
-  "version": "0.1.0",
+  "name": "link-shortener-monorepo",
   "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "dev": "pnpm --filter @link-shortener/web dev",
+    "dev:full": "pnpm db:start && pnpm dev",
+    "build": "pnpm --filter @link-shortener/web build",
+    "start": "pnpm --filter @link-shortener/web start",
+    "lint": "pnpm --filter @link-shortener/web lint",
+    "db:start": "(brew services start postgresql@18 || brew services start postgresql)",
+    "db:stop": "(brew services stop postgresql@18 || brew services stop postgresql)",
+    "db:status": "(brew services list | grep -E 'postgresql(@18)?' || true)",
+    "db:setup": "sh -c 'set -a; [ -f .env ] && . ./.env; [ -f .env.local ] && . ./.env.local; [ -f apps/web/.env.local ] && . ./apps/web/.env.local; set +a; if [ -n \"$DATABASE_URL\" ]; then pnpm db:apply; else pnpm db:init; fi'",
+    "db:apply": "sh -c 'set -a; [ -f .env ] && . ./.env; [ -f .env.local ] && . ./.env.local; [ -f apps/web/.env.local ] && . ./apps/web/.env.local; set +a; if [ -z \"$DATABASE_URL\" ]; then echo DATABASE_URL is not set; exit 1; fi; (/opt/homebrew/opt/libpq/bin/psql \"$DATABASE_URL\" -f apps/db/schema.sql || psql \"$DATABASE_URL\" -f apps/db/schema.sql)'",
+    "db:create": "(/opt/homebrew/opt/libpq/bin/createdb link_shortener 2>/dev/null || createdb link_shortener 2>/dev/null || true)",
+    "db:init": "pnpm db:start && pnpm db:create && (/opt/homebrew/opt/libpq/bin/psql -d link_shortener -f apps/db/schema.sql || psql -d link_shortener -f apps/db/schema.sql)",
+    "db:reset": "pnpm db:start && (/opt/homebrew/opt/libpq/bin/psql -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'link_shortener' AND pid <> pg_backend_pid();\" || psql -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'link_shortener' AND pid <> pg_backend_pid();\") && (/opt/homebrew/opt/libpq/bin/psql -d postgres -c 'DROP DATABASE IF EXISTS link_shortener;' || psql -d postgres -c 'DROP DATABASE IF EXISTS link_shortener;') && pnpm db:create && pnpm db:init"
   }
 }
