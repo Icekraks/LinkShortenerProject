@@ -8,9 +8,9 @@ This repo is now structured as a monorepo.
 - `apps/db` – Postgres config + schema
 - `packages/*` – shared packages (optional, for future use)
 
-## Prerequisites (no Docker)
+## Prerequisites
 
-- Node.js + pnpm
+- Node.js 24.12+ + pnpm
 - Homebrew
 - PostgreSQL 18 + libpq CLI via Homebrew:
 
