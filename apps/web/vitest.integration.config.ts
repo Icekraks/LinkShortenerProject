@@ -1,5 +1,5 @@
-import { defineConfig } from "vitest/config";
-import path from "node:path";
+import { defineConfig } from "vitest/config"
+import path from "node:path"
 
 export default defineConfig({
   resolve: {
@@ -8,6 +8,7 @@ export default defineConfig({
       "@ui": path.resolve(__dirname, "components/ui"),
       "@lib": path.resolve(__dirname, "lib"),
       "@components": path.resolve(__dirname, "components"),
+      "server-only": path.resolve(__dirname, "test/shims/server-only.ts"),
     },
   },
   test: {
@@ -17,4 +18,4 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
   },
-});
+})
