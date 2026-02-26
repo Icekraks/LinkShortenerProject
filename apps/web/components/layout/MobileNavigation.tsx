@@ -5,11 +5,11 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@ui/drawer";
-import { ScrollArea } from "@ui/scroll-area";
-import { Button } from "@ui/button";
-import Link from "next/link";
-import { Menu, X } from "lucide-react";
+} from "@ui/drawer"
+import { ScrollArea } from "@ui/scroll-area"
+import { Button } from "@ui/button"
+import Link from "next/link"
+import { Menu, X } from "lucide-react"
 
 const Links = [
   {
@@ -24,7 +24,7 @@ const Links = [
     name: "Portfolio",
     href: "https://felix-hu.me",
   },
-];
+]
 
 const MobileNavigation = () => {
   return (
@@ -60,7 +60,7 @@ const MobileNavigation = () => {
         </DrawerContent>
       </Drawer>
     </nav>
-  );
-};
+  )
+}
 
-export default MobileNavigation;
+export default MobileNavigation

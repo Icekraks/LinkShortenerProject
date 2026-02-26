@@ -1,4 +1,4 @@
-import LinkShortenerForm from "@/components/forms/LinkShortenerForm";
+import LinkShortenerForm from "@/components/forms/LinkShortenerForm"
 
 export default function Home() {
   return (
@@ -10,5 +10,5 @@ export default function Home() {
         </section>
       </main>
     </div>
-  );
+  )
 }

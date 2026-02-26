@@ -1,33 +1,33 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useForm } from "@tanstack/react-form-nextjs";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group";
-import { Button } from "@ui/button";
-import type { CreateShortLinkResponse, CreateShortLinkSuccessResponse } from "@/types/short-link";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/select";
-import { Label } from "@ui/label";
-import { Input } from "@ui/input";
-import { cn } from "@/lib/utils";
+"use client"
+import { useEffect, useState } from "react"
+import { useForm } from "@tanstack/react-form-nextjs"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
+import { Button } from "@ui/button"
+import type { CreateShortLinkResponse, CreateShortLinkSuccessResponse } from "@/types/short-link"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/select"
+import { Label } from "@ui/label"
+import { Input } from "@ui/input"
+import { cn } from "@/lib/utils"
 
 const validateUrl = (value: string) => {
-  const raw = value.trim();
+  const raw = value.trim()
 
   if (!raw) {
-    return "URL is required";
+    return "URL is required"
   }
 
   try {
-    const parsed = new URL(raw);
+    const parsed = new URL(raw)
 
     if (!["http:", "https:"].includes(parsed.protocol)) {
-      return "URL must start with http:// or https://";
+      return "URL must start with http:// or https://"
     }
   } catch {
-    return "Enter a valid URL";
+    return "Enter a valid URL"
   }
 
-  return undefined;
-};
+  return undefined
+}
 
 const expiryOptions = [
   { value: 1, label: "1 hour" },
@@ -35,37 +35,37 @@ const expiryOptions = [
   { value: 6, label: "6 hours" },
   { value: 12, label: "12 hours" },
   { value: 24, label: "24 hours" },
-];
+]
 
 const getExpiryLabel = (value: number) => {
-  return expiryOptions.find((option) => option.value === value)?.label ?? `${value} hours`;
-};
+  return expiryOptions.find((option) => option.value === value)?.label ?? `${value} hours`
+}
 
 const isCreateShortLinkSuccessResponse = (
   data: CreateShortLinkResponse | null,
 ): data is CreateShortLinkSuccessResponse => {
-  return Boolean(data && "shortUrl" in data && "shortCode" in data);
-};
+  return Boolean(data && "shortUrl" in data && "shortCode" in data)
+}
 
 const LinkShortenerForm = () => {
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!successMessage) {
-      return;
+      return
     }
 
     const timeoutId = window.setTimeout(() => {
-      setSuccessMessage(null);
-    }, 5000);
+      setSuccessMessage(null)
+    }, 5000)
 
     return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [successMessage]);
+      window.clearTimeout(timeoutId)
+    }
+  }, [successMessage])
 
   const form = useForm({
     defaultValues: {
@@ -73,10 +73,10 @@ const LinkShortenerForm = () => {
       expiryHours: 24,
     },
     onSubmit: async (values) => {
-      setSubmitError(null);
-      setCreatedLink(null);
-      setCopied(false);
-      const normalizedUrl = new URL(values.value.url.trim()).toString();
+      setSubmitError(null)
+      setCreatedLink(null)
+      setCopied(false)
+      const normalizedUrl = new URL(values.value.url.trim()).toString()
 
       const response = await fetch("/api/generate-shortlink", {
         method: "POST",
@@ -87,55 +87,55 @@ const LinkShortenerForm = () => {
           originalUrl: normalizedUrl,
           expiryHours: values.value.expiryHours,
         }),
-      });
+      })
 
-      const data = (await response.json().catch(() => null)) as CreateShortLinkResponse | null;
+      const data = (await response.json().catch(() => null)) as CreateShortLinkResponse | null
 
       if (!response.ok) {
-        const errorMessage = data && "error" in data ? data.error : "Failed to create short link";
-        setSubmitError(errorMessage);
-        return;
+        const errorMessage = data && "error" in data ? data.error : "Failed to create short link"
+        setSubmitError(errorMessage)
+        return
       }
 
       if (!isCreateShortLinkSuccessResponse(data)) {
-        setSubmitError("API handler returned an invalid response");
-        return;
+        setSubmitError("API handler returned an invalid response")
+        return
       }
 
-      setCreatedLink(data);
-      setSuccessMessage("Short link created successfully");
-      form.reset();
+      setCreatedLink(data)
+      setSuccessMessage("Short link created successfully")
+      form.reset()
     },
-  });
+  })
 
   const handleCopy = async () => {
     if (!createdLink) {
-      return;
+      return
     }
 
     try {
-      await navigator.clipboard.writeText(createdLink.shortUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(createdLink.shortUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch {
-      setSubmitError("Unable to copy link to clipboard");
+      setSubmitError("Unable to copy link to clipboard")
     }
-  };
+  }
 
   const resetForm = () => {
-    setSubmitError(null);
-    setCreatedLink(null);
-    setCopied(false);
-    setSuccessMessage(null);
-    form.reset();
-  };
+    setSubmitError(null)
+    setCreatedLink(null)
+    setCopied(false)
+    setSuccessMessage(null)
+    form.reset()
+  }
 
   return !createdLink ? (
     <form
       onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        void form.handleSubmit(e);
+        e.preventDefault()
+        e.stopPropagation()
+        void form.handleSubmit(e)
       }}
     >
       <div className="flex flex-col md:flex-row items-center mt-2 gap-4">
@@ -228,7 +228,7 @@ const LinkShortenerForm = () => {
       {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
       {copied ? <p className="sr-only">Generated short URL copied to clipboard</p> : null}
     </div>
-  );
-};
+  )
+}
 
-export default LinkShortenerForm;
+export default LinkShortenerForm

@@ -1,5 +1,5 @@
-import { Button } from "@ui/button";
-import Link from "next/link";
+import { Button } from "@ui/button"
+import Link from "next/link"
 
 const Links = [
   {
@@ -14,7 +14,7 @@ const Links = [
     name: "Portfolio",
     href: "https://felix-hu.me",
   },
-];
+]
 
 const DesktopNavigation = () => {
   return (
@@ -37,6 +37,6 @@ const DesktopNavigation = () => {
         ))}
       </ul>
     </nav>
-  );
-};
-export default DesktopNavigation;
+  )
+}
+export default DesktopNavigation

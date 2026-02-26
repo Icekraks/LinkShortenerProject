@@ -1,6 +1,6 @@
-import Link from "next/link";
-import DesktopNavigation from "@components/layout/DesktopNavigation";
-import MobileNavigation from "@components/layout/MobileNavigation";
+import Link from "next/link"
+import DesktopNavigation from "@components/layout/DesktopNavigation"
+import MobileNavigation from "@components/layout/MobileNavigation"
 
 const Header = () => {
   return (
@@ -11,7 +11,7 @@ const Header = () => {
       <DesktopNavigation />
       <MobileNavigation />
     </header>
-  );
-};
+  )
+}
 
-export default Header;
+export default Header

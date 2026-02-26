@@ -1,21 +1,21 @@
 export type CreateShortLinkBody = {
-  originalUrl?: string;
-  expiryHours?: number;
-};
+  originalUrl?: string
+  expiryHours?: number
+}
 
 export type CreateShortLinkSuccessResponse = {
-  id: number;
-  shortCode: string;
-  originalUrl: string;
-  createdAt: string;
-  expiryHours: number;
-  shortPath: string;
-  shortUrl: string;
-};
+  id: number
+  shortCode: string
+  originalUrl: string
+  createdAt: string
+  expiryHours: number
+  shortPath: string
+  shortUrl: string
+}
 
 export type CreateShortLinkErrorResponse = {
-  error: string;
-  retryAfterSeconds?: number;
-};
+  error: string
+  retryAfterSeconds?: number
+}
 
-export type CreateShortLinkResponse = CreateShortLinkSuccessResponse | CreateShortLinkErrorResponse;
+export type CreateShortLinkResponse = CreateShortLinkSuccessResponse | CreateShortLinkErrorResponse

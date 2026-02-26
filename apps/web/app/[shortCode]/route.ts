@@ -1,48 +1,51 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-import { dbPool } from "@/lib/db";
+import { RESOLVE_LINK_RATE_LIMIT, isResolveLinkRateLimited } from "@/helpers/rateLimitHelpers"
+import { getActiveLinkByShortCode } from "@/helpers/shortLinkHelpers"
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"
 
-type ResolveLinkRow = {
-  original_url: string;
-};
-
-const shortCodePattern = /^[a-z0-9]{4,}$/;
+const shortCodePattern = /^[a-z0-9]{4,}$/
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ shortCode: string }> },
 ) {
-  const { shortCode } = await context.params;
-  const normalizedShortCode = shortCode.toLowerCase();
+  const { shortCode } = await context.params
+  const normalizedShortCode = shortCode.toLowerCase()
 
   if (!shortCodePattern.test(normalizedShortCode)) {
-    return NextResponse.json({ error: "Invalid short code" }, { status: 404 });
+    return NextResponse.json({ error: "Invalid short code" }, { status: 404 })
   }
 
   try {
-    const result = await dbPool.query<ResolveLinkRow>(
-      `
-        SELECT original_url
-        FROM links
-        WHERE short_code = $1
-          AND (expires_at IS NULL OR expires_at > NOW())
-        LIMIT 1
-      `,
-      [normalizedShortCode],
-    );
+    const rateLimited = await isResolveLinkRateLimited(request)
 
-    const row = result.rows[0];
-
-    if (!row) {
-      return NextResponse.json({ error: "Link expired or not found" }, { status: 404 });
+    if (rateLimited) {
+      return NextResponse.json(
+        {
+          error: "Too many requests. Please try again shortly.",
+          retryAfterSeconds: RESOLVE_LINK_RATE_LIMIT.windowSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(RESOLVE_LINK_RATE_LIMIT.windowSeconds),
+          },
+        },
+      )
     }
 
-    return NextResponse.redirect(row.original_url, { status: 307 });
+    const row = await getActiveLinkByShortCode(normalizedShortCode)
+
+    if (!row) {
+      return NextResponse.json({ error: "Link expired or not found" }, { status: 404 })
+    }
+
+    return NextResponse.redirect(row.original_url, { status: 307 })
   } catch (error) {
-    console.error("Failed to resolve short link", error);
-    return NextResponse.json({ error: "Failed to resolve short link" }, { status: 500 });
+    console.error("Failed to resolve short link", error)
+    return NextResponse.json({ error: "Failed to resolve short link" }, { status: 500 })
   }
 }

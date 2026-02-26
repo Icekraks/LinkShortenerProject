@@ -1,4 +1,4 @@
-import GreetingComponent from "@/components/GreetingComponent";
+import GreetingComponent from "@/components/GreetingComponent"
 
 export default function Contact() {
   return (
@@ -20,5 +20,5 @@ export default function Contact() {
         </p>
       </main>
     </div>
-  );
+  )
 }

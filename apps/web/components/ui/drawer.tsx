@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { usePathname } from "next/navigation";
-import { Drawer as DrawerPrimitive } from "vaul";
+import * as React from "react"
+import { usePathname } from "next/navigation"
+import { Drawer as DrawerPrimitive } from "vaul"
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
 type DrawerProps = React.ComponentProps<typeof DrawerPrimitive.Root> & {
-  closeOnRouteChange?: boolean;
-};
+  closeOnRouteChange?: boolean
+}
 
 function Drawer({
   closeOnRouteChange = false,
@@ -17,35 +17,35 @@ function Drawer({
   onOpenChange,
   ...props
 }: DrawerProps) {
-  const pathname = usePathname();
-  const previousPathname = React.useRef(pathname);
-  const [internalOpen, setInternalOpen] = React.useState(Boolean(defaultOpen));
-  const isControlled = openProp !== undefined;
-  const open = isControlled ? openProp : internalOpen;
+  const pathname = usePathname()
+  const previousPathname = React.useRef(pathname)
+  const [internalOpen, setInternalOpen] = React.useState(Boolean(defaultOpen))
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : internalOpen
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
       if (!isControlled) {
-        setInternalOpen(nextOpen);
+        setInternalOpen(nextOpen)
       }
 
-      onOpenChange?.(nextOpen);
+      onOpenChange?.(nextOpen)
     },
     [isControlled, onOpenChange],
-  );
+  )
 
   React.useEffect(() => {
     if (!closeOnRouteChange) {
-      previousPathname.current = pathname;
-      return;
+      previousPathname.current = pathname
+      return
     }
 
     if (previousPathname.current !== pathname) {
-      handleOpenChange(false);
+      handleOpenChange(false)
     }
 
-    previousPathname.current = pathname;
-  }, [pathname, closeOnRouteChange, handleOpenChange]);
+    previousPathname.current = pathname
+  }, [pathname, closeOnRouteChange, handleOpenChange])
 
   return (
     <DrawerPrimitive.Root
@@ -54,19 +54,19 @@ function Drawer({
       onOpenChange={handleOpenChange}
       {...props}
     />
-  );
+  )
 }
 
 function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
+  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
 }
 
 function DrawerPortal({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
+  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
 }
 
 function DrawerClose({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Close>) {
-  return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
+  return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />
 }
 
 function DrawerOverlay({
@@ -82,7 +82,7 @@ function DrawerOverlay({
       )}
       {...props}
     />
-  );
+  )
 }
 
 function DrawerContent({
@@ -105,7 +105,7 @@ function DrawerContent({
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>
-  );
+  )
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -118,7 +118,7 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  );
+  )
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -128,7 +128,7 @@ function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("gap-2 p-4 mt-auto flex flex-col", className)}
       {...props}
     />
-  );
+  )
 }
 
 function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {
@@ -138,7 +138,7 @@ function DrawerTitle({ className, ...props }: React.ComponentProps<typeof Drawer
       className={cn("text-foreground font-medium", className)}
       {...props}
     />
-  );
+  )
 }
 
 function DrawerDescription({
@@ -151,7 +151,7 @@ function DrawerDescription({
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
     />
-  );
+  )
 }
 
 export {
@@ -165,4 +165,4 @@ export {
   DrawerFooter,
   DrawerTitle,
   DrawerDescription,
-};
+}
