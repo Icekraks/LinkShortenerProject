@@ -4,4 +4,4 @@ export const RESOLVE_SHORT_LINK_QUERY = `
         WHERE short_code = $1
           AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
-      `;
+      `
