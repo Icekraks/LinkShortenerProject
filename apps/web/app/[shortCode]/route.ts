@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 import { RESOLVE_LINK_RATE_LIMIT, isResolveLinkRateLimited } from "@/helpers/rateLimitHelpers";
 import { getActiveLinkByShortCode } from "@/helpers/shortLinkHelpers";
