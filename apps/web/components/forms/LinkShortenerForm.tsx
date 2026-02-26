@@ -135,7 +135,7 @@ const LinkShortenerForm = () => {
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        form.handleSubmit(e);
+        void form.handleSubmit(e);
       }}
     >
       <div className="flex flex-col md:flex-row items-center mt-2 gap-4">

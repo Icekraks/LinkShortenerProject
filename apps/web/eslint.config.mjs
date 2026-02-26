@@ -8,6 +8,12 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     files: ["**/*.{ts,tsx,mts}"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [
@@ -36,6 +42,13 @@ const eslintConfig = defineConfig([
       ],
       "no-console": ["warn", { allow: ["warn", "error"] }],
       eqeqeq: ["error", "always"],
+    },
+  },
+  {
+    files: ["**/*.test.{ts,tsx}", "**/*.integration.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/no-misused-promises": "off",
     },
   },
   // Override default ignores of eslint-config-next.

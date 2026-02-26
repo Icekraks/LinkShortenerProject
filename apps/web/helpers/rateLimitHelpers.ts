@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
 import { dbPool } from "@/lib/db";
 import { CREATE_LINK_RATE_LIMIT_CHECK_QUERY } from "@/sql/rateLimitCheck";
