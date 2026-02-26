@@ -6,13 +6,13 @@
     "node": ">=24.12.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @link-shortener/web dev",
+    "dev": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web dev",
     "dev:full": "pnpm db:start && pnpm dev",
-    "build": "pnpm --filter @link-shortener/web build",
-    "start": "pnpm --filter @link-shortener/web start",
-    "lint": "pnpm --filter @link-shortener/web lint",
-    "format": "pnpm --filter @link-shortener/web format",
-    "format:check": "pnpm --filter @link-shortener/web format:check",
+    "build": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web build",
+    "start": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web start",
+    "lint": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web lint",
+    "format": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web format",
+    "format:check": "dotenv -e .env -e .env.local -- pnpm --filter @link-shortener/web format:check",
     "db:start": "(brew services start postgresql@18 || brew services start postgresql)",
     "db:stop": "(brew services stop postgresql@18 || brew services stop postgresql)",
     "db:status": "(brew services list | grep -E 'postgresql(@18)?' || true)",
@@ -22,5 +22,8 @@
     "db:create": "(/opt/homebrew/opt/libpq/bin/createdb link_shortener 2>/dev/null || createdb link_shortener 2>/dev/null || true)",
     "db:init": "pnpm db:start && pnpm db:create && (/opt/homebrew/opt/libpq/bin/psql -d link_shortener -f apps/db/schema.sql || psql -d link_shortener -f apps/db/schema.sql)",
     "db:reset": "pnpm db:start && (/opt/homebrew/opt/libpq/bin/psql -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'link_shortener' AND pid <> pg_backend_pid();\" || psql -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'link_shortener' AND pid <> pg_backend_pid();\") && (/opt/homebrew/opt/libpq/bin/psql -d postgres -c 'DROP DATABASE IF EXISTS link_shortener;' || psql -d postgres -c 'DROP DATABASE IF EXISTS link_shortener;') && pnpm db:create && pnpm db:init"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
   }
 }

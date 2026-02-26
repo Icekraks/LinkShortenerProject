@@ -1,57 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { dbPool } from "@/lib/db";
+import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers";
+import { isSelfDomainTarget } from "@/helpers/urlHelpers";
+import { encodeLinkIdToShortCode } from "@/lib/shortCode";
+import {
+  ALLOCATE_NEXT_LINK_ID_QUERY,
+  INSERT_SHORT_LINK_WITH_CODE_QUERY,
+} from "@/sql/generateShortLink";
 import type { CreateShortLinkBody } from "@/types/short-link";
 
 export const runtime = "nodejs";
 
-const CREATE_LINK_RATE_LIMIT = {
-  maxRequests: 10,
-  windowSeconds: 60,
-};
-
 const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24]);
-
-const CREATE_LINK_ENDPOINT = "create-shortlink";
-
-const getClientIdentifier = (request: NextRequest) => {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const firstIp = forwardedFor.split(",")[0]?.trim();
-    if (firstIp) {
-      return firstIp;
-    }
-  }
-
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  if (realIp) {
-    return realIp;
-  }
-
-  return "unknown";
-};
-
-const isCreateLinkRateLimited = async (request: NextRequest) => {
-  const identifier = getClientIdentifier(request);
-
-  const result = await dbPool.query<{ request_count: number }>(
-    `
-      WITH inserted AS (
-        INSERT INTO rate_limit_events (endpoint, identifier)
-        VALUES ($1, $2)
-      )
-      SELECT COUNT(*)::int AS request_count
-      FROM rate_limit_events
-      WHERE endpoint = $1
-        AND identifier = $2
-        AND created_at > NOW() - ($3 * INTERVAL '1 second')
-    `,
-    [CREATE_LINK_ENDPOINT, identifier, CREATE_LINK_RATE_LIMIT.windowSeconds],
-  );
-
-  const requestCount = result.rows[0]?.request_count ?? 0;
-  return requestCount > CREATE_LINK_RATE_LIMIT.maxRequests;
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,33 +48,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let normalizedUrl: string;
+    let targetUrl: URL;
 
     try {
-      normalizedUrl = new URL(originalUrl).toString();
+      targetUrl = new URL(originalUrl);
     } catch {
       return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
 
+    if (isSelfDomainTarget(targetUrl, request.nextUrl)) {
+      return NextResponse.json({ error: "Cannot shorten URLs from this domain" }, { status: 400 });
+    }
+
+    const normalizedUrl = targetUrl.toString();
+
     const expiryDate = new Date();
     expiryDate.setHours(expiryDate.getHours() + expiryHours);
 
-    const result = await dbPool.query<{
-      id: number;
-      short_code: string;
-      original_url: string;
-      created_at: Date;
-      expires_at: Date | null;
-    }>(
-      `
-        INSERT INTO links (original_url, expires_at)
-        VALUES ($1, $2)
-        RETURNING id, trim(short_code) AS short_code, original_url, created_at, expires_at
-      `,
-      [normalizedUrl, expiryDate],
-    );
+    const client = await dbPool.connect();
+    let created:
+      | {
+          id: number;
+          short_code: string;
+          original_url: string;
+          created_at: Date;
+          expires_at: Date | null;
+        }
+      | undefined;
 
-    const created = result.rows[0];
+    try {
+      await client.query("BEGIN");
+
+      const nextIdResult = await client.query<{ id: string }>(ALLOCATE_NEXT_LINK_ID_QUERY);
+
+      const idValue = Number(nextIdResult.rows[0]?.id);
+
+      if (!Number.isSafeInteger(idValue) || idValue < 0) {
+        throw new Error("Failed to allocate a valid link id");
+      }
+
+      const shortCode = encodeLinkIdToShortCode(idValue);
+
+      const insertResult = await client.query<{
+        id: number;
+        short_code: string;
+        original_url: string;
+        created_at: Date;
+        expires_at: Date | null;
+      }>(INSERT_SHORT_LINK_WITH_CODE_QUERY, [idValue, shortCode, normalizedUrl, expiryDate]);
+
+      await client.query("COMMIT");
+      created = insertResult.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    if (!created) {
+      return NextResponse.json({ error: "Failed to create short link" }, { status: 500 });
+    }
+
     const shortPath = `/${created.short_code}`;
     return NextResponse.json(
       {

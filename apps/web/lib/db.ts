@@ -6,7 +6,8 @@ declare global {
   var __linkShortenerPool: Pool | undefined;
 }
 
-const connectionString = process.env.DATABASE_URL ?? defaultDatabaseUrl;
+const envDatabaseUrl = process.env.DATABASE_URL?.trim();
+const connectionString = envDatabaseUrl ? envDatabaseUrl : defaultDatabaseUrl;
 
 export const dbPool =
   globalThis.__linkShortenerPool ??

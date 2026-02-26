@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form-nextjs";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group";
 import { Button } from "@ui/button";
@@ -7,6 +7,7 @@ import type { CreateShortLinkResponse, CreateShortLinkSuccessResponse } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/select";
 import { Label } from "@ui/label";
 import { Input } from "@ui/input";
+import { cn } from "@/lib/utils";
 
 const validateUrl = (value: string) => {
   const raw = value.trim();
@@ -51,6 +52,20 @@ const LinkShortenerForm = () => {
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSuccessMessage(null);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [successMessage]);
 
   const form = useForm({
     defaultValues: {
@@ -105,6 +120,14 @@ const LinkShortenerForm = () => {
     } catch {
       setSubmitError("Unable to copy link to clipboard");
     }
+  };
+
+  const resetForm = () => {
+    setSubmitError(null);
+    setCreatedLink(null);
+    setCopied(false);
+    setSuccessMessage(null);
+    form.reset();
   };
 
   return !createdLink ? (
@@ -189,11 +212,19 @@ const LinkShortenerForm = () => {
       <InputGroup>
         <InputGroupInput value={createdLink.shortUrl} readOnly aria-label="Generated short URL" />
         <InputGroupAddon align="inline-end" className="pr-0">
-          <Button type="button" onClick={handleCopy} aria-label="Copy generated short URL">
-            {copied ? "Copied" : "Copy"}
+          <Button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copy generated short URL"
+            className={cn("", copied && "bg-emerald-600 hover:bg-emerald-700")}
+          >
+            {copied ? "Copied" : "Copy Shortened URL"}
           </Button>
         </InputGroupAddon>
       </InputGroup>
+      <Button type="button" onClick={resetForm} aria-label="Reset form">
+        Generate a New Short Link
+      </Button>
       {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
       {copied ? <p className="sr-only">Generated short URL copied to clipboard</p> : null}
     </div>

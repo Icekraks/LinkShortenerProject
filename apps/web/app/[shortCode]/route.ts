@@ -8,15 +8,16 @@ type ResolveLinkRow = {
   original_url: string;
 };
 
-const shortCodePattern = /^[a-zA-Z0-9]{4}$/;
+const shortCodePattern = /^[a-z0-9]{4,}$/;
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ shortCode: string }> },
 ) {
   const { shortCode } = await context.params;
+  const normalizedShortCode = shortCode.toLowerCase();
 
-  if (!shortCodePattern.test(shortCode)) {
+  if (!shortCodePattern.test(normalizedShortCode)) {
     return NextResponse.json({ error: "Invalid short code" }, { status: 404 });
   }
 
@@ -29,7 +30,7 @@ export async function GET(
           AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
       `,
-      [shortCode],
+      [normalizedShortCode],
     );
 
     const row = result.rows[0];

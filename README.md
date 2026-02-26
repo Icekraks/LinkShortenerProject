@@ -70,4 +70,5 @@ Create `apps/web/.env.local` if needed:
 
 ```env
 DATABASE_URL=postgresql://localhost:5432/link_shortener
+HASHIDS_SALT=replace-with-a-long-random-secret
 ```
