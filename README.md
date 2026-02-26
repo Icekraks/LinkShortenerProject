@@ -1,18 +1,19 @@
 # Link Shortener Monorepo
 
-This repo is now structured as a monorepo.
+Minimal URL shortener built with Next.js and PostgreSQL.
 
-## Structure
+## Workspace Structure
 
-- `apps/web` – Next.js app
-- `apps/db` – Postgres config + schema
-- `packages/*` – shared packages (optional, for future use)
+- `apps/web`: Next.js application (API routes + UI)
+- `apps/db`: PostgreSQL schema and maintenance SQL
 
-## Prerequisites
+## Requirements
 
-- Node.js 24.12+ + pnpm
-- Homebrew
-- PostgreSQL 18 + libpq CLI via Homebrew:
+- Node.js `>=24.12.0`
+- `pnpm`
+- PostgreSQL (local or remote)
+
+For local macOS setup:
 
 ```bash
 brew install postgresql@18 libpq
@@ -20,55 +21,98 @@ echo 'export PATH="/opt/homebrew/opt/libpq/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-## Commands
+## Environment Variables
 
-From repo root:
+Create either `.env` / `.env.local` at repo root, or `apps/web/.env.local`.
+
+```env
+DATABASE_URL=postgresql://localhost:5432/link_shortener
+HASHIDS_SALT=replace-with-a-long-random-secret
+```
+
+Notes:
+
+- `HASHIDS_SALT` is required at startup (`apps/web/next.config.ts`).
+- `DATABASE_URL` falls back to `postgresql://localhost:5432/link_shortener` when empty.
+
+## Run the App
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-- `pnpm dev` runs the Next.js app from `apps/web`
-- `pnpm dev:full` starts local Postgres (Homebrew service) and then runs Next.js
-- `pnpm db:start` starts Postgres
-- `pnpm db:stop` stops Postgres
-- `pnpm db:status` shows Postgres service status
-- `pnpm db:setup` one-command DB setup (uses `DATABASE_URL` on host, local init otherwise)
-- `pnpm db:apply` applies schema directly to `DATABASE_URL`
-- `pnpm db:init` creates `link_shortener` and applies `apps/db/schema.sql`
-- `pnpm db:reset` drops and recreates `link_shortener` + tables
-- `pnpm db:cleanup` deletes expired links (`expires_at <= NOW()`)
+App URL: `http://localhost:3000`
 
-`db:setup` and `db:apply` auto-load env vars from `.env`, `.env.local`, and `apps/web/.env.local`.
+## Scripts (Root)
 
-## Default link schema
+- `pnpm dev`: start web app
+- `pnpm dev:full`: start local Postgres service + web app
+- `pnpm build`: build web app
+- `pnpm start`: start production server
+- `pnpm lint`: run ESLint for web app
+- `pnpm format`: run Prettier write
+- `pnpm format:check`: check Prettier formatting
 
-The `links` table includes:
+### Database Scripts
 
-- `id` (BIGSERIAL primary key)
-- `short_code` (auto-generated base52 letters only, 4 chars)
-- `original_url` (URL before shortening)
-- `created_at` (creation timestamp)
-- `expires_at` (expiry timestamp)
+- `pnpm db:start`: start Postgres service
+- `pnpm db:stop`: stop Postgres service
+- `pnpm db:status`: show Postgres service status
+- `pnpm db:setup`: auto setup (apply/init based on `DATABASE_URL`)
+- `pnpm db:apply`: apply `apps/db/schema.sql` to `DATABASE_URL`
+- `pnpm db:init`: create local DB and apply schema
+- `pnpm db:reset`: drop/recreate local DB and reapply schema
+- `pnpm db:cleanup`: remove expired links
 
-## Optional daily cleanup
+## Short Link Behavior
 
-Run this once per day to remove expired rows:
+- Short codes are stored as lowercase alphanumeric (`a-z0-9`) with min length 4.
+- Codes are generated via Hashids (`apps/web/lib/shortCode.ts`) from DB ids using `HASHIDS_SALT`.
+- Create endpoint blocks:
+  - cross-origin requests (same-origin check)
+  - self-domain target URLs
+  - invalid expiry windows
+- Resolve endpoint validates code format, checks expiry, and redirects with `307`.
+
+## Rate Limiting
+
+Rate limit events are tracked in `rate_limit_events`.
+
+- Create link endpoint: 10 requests / 60s per client identifier
+- Resolve endpoint: 120 requests / 60s per client identifier
+
+## Database Schema
+
+`apps/db/schema.sql` creates:
+
+- `links`
+  - `id BIGSERIAL PRIMARY KEY`
+  - `short_code TEXT UNIQUE` with format check `^[a-z0-9]{4,}$`
+  - `original_url`, `created_at`, `expires_at`
+- `rate_limit_events`
+  - `endpoint`, `identifier`, `created_at`
+
+## Testing
+
+### Unit/Route Tests (mocked)
 
 ```bash
-pnpm db:cleanup
+pnpm test
+pnpm test:ci
 ```
 
-## App URL
+### Integration Tests (real DB)
 
-- http://localhost:3000
-
-## Optional local DB env
-
-Create `apps/web/.env.local` if needed:
-
-```env
-DATABASE_URL=postgresql://localhost:5432/link_shortener
-HASHIDS_SALT=replace-with-a-long-random-secret
+```bash
+pnpm test:integration
 ```
+
+Integration tests run only when `INTEGRATION_DATABASE_URL` is set; otherwise they are skipped.
+
+## Git Hooks and CI
+
+- Husky pre-commit hook runs `pnpm test:ci`
+- GitHub Actions (`.github/workflows/pr-checks.yml`):
+  - `test-and-lint` job: install + lint + unit tests
+  - `integration-tests` job: runs against PostgreSQL service container
