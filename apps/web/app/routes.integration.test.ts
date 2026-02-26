@@ -9,13 +9,13 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 const describeIfIntegration = integrationDatabaseUrl ? describe : describe.skip;
 
 describeIfIntegration("Route integration", () => {
-  let pool: Pool;
+  let pool: Pool | undefined;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = integrationDatabaseUrl;
     process.env.HASHIDS_SALT = process.env.HASHIDS_SALT ?? "integration-test-salt";
 
-    const schemaFilePath = path.resolve(__dirname, "../../../db/schema.sql");
+    const schemaFilePath = path.resolve(__dirname, "../../db/schema.sql");
     const schemaSql = fs.readFileSync(schemaFilePath, "utf8");
 
     pool = new Pool({ connectionString: integrationDatabaseUrl });
@@ -23,12 +23,18 @@ describeIfIntegration("Route integration", () => {
   });
 
   beforeEach(async () => {
+    if (!pool) {
+      throw new Error("Integration pool was not initialized");
+    }
+
     await pool.query("TRUNCATE TABLE rate_limit_events, links RESTART IDENTITY");
     vi.resetModules();
   });
 
   afterAll(async () => {
-    await pool.end();
+    if (pool) {
+      await pool.end();
+    }
   });
 
   it("creates and resolves a short link", async () => {
@@ -63,6 +69,10 @@ describeIfIntegration("Route integration", () => {
   });
 
   it("returns 404 for expired short links", async () => {
+    if (!pool) {
+      throw new Error("Integration pool was not initialized");
+    }
+
     await pool.query(
       `
         INSERT INTO links (short_code, original_url, expires_at)
