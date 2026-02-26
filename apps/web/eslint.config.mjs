@@ -44,6 +44,13 @@ const eslintConfig = defineConfig([
       eqeqeq: ["error", "always"],
     },
   },
+  {
+    files: ["**/*.test.{ts,tsx}", "**/*.integration.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/no-misused-promises": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
