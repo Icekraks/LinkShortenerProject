@@ -1,3 +1,4 @@
+import "server-only";
 import { NextRequest } from "next/server";
 
 import { dbPool } from "@/lib/db";
@@ -8,7 +9,13 @@ export const CREATE_LINK_RATE_LIMIT = {
   windowSeconds: 60,
 };
 
+export const RESOLVE_LINK_RATE_LIMIT = {
+  maxRequests: 120,
+  windowSeconds: 60,
+};
+
 const CREATE_LINK_ENDPOINT = "create-shortlink";
+const RESOLVE_LINK_ENDPOINT = "resolve-shortlink";
 
 const getClientIdentifier = (request: NextRequest) => {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -38,4 +45,17 @@ export const isCreateLinkRateLimited = async (request: NextRequest) => {
 
   const requestCount = result.rows[0]?.request_count ?? 0;
   return requestCount > CREATE_LINK_RATE_LIMIT.maxRequests;
+};
+
+export const isResolveLinkRateLimited = async (request: NextRequest) => {
+  const identifier = getClientIdentifier(request);
+
+  const result = await dbPool.query<{ request_count: number }>(CREATE_LINK_RATE_LIMIT_CHECK_QUERY, [
+    RESOLVE_LINK_ENDPOINT,
+    identifier,
+    RESOLVE_LINK_RATE_LIMIT.windowSeconds,
+  ]);
+
+  const requestCount = result.rows[0]?.request_count ?? 0;
+  return requestCount > RESOLVE_LINK_RATE_LIMIT.maxRequests;
 };

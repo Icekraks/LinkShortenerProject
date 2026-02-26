@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { dbPool } from "@/lib/db";
 import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers";
-import { isSelfDomainTarget } from "@/helpers/urlHelpers";
+import { isSameOriginRequest, isSelfDomainTarget } from "@/helpers/urlHelpers";
 import { encodeLinkIdToShortCode } from "@/lib/shortCode";
 import {
   ALLOCATE_NEXT_LINK_ID_QUERY,
@@ -16,6 +16,10 @@ const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24]);
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSameOriginRequest(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const rateLimited = await isCreateLinkRateLimited(request);
 
     if (rateLimited) {

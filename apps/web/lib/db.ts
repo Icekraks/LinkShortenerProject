@@ -1,3 +1,4 @@
+import "server-only";
 import { Pool } from "pg";
 
 const defaultDatabaseUrl = "postgresql://localhost:5432/link_shortener";
