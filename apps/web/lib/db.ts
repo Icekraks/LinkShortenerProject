@@ -14,6 +14,7 @@ export const dbPool =
   globalThis.__linkShortenerPool ??
   new Pool({
     connectionString,
+    max: 5, // Limit the number of connections in the pool
   })
 
 if (process.env.NODE_ENV !== "production") {
