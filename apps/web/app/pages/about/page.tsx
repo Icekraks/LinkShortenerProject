@@ -2,7 +2,7 @@ export default function About() {
   return (
     <div className="flex min-h-screen items-center justify-center font-sans">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16">
-        <h1 className="text-xl font-bold">About Snipr</h1>
+        <h1 className="text-xl font-bold font-mono">About Snipr</h1>
 
         <p>
           Snipr is a minimal URL shortener built as a full-stack engineering project. Its goal is
@@ -11,7 +11,7 @@ export default function About() {
 
         <hr className="divider" />
 
-        <h2 className="text-lg font-semibold">Why Build a URL Shortener?</h2>
+        <h2 className="text-lg font-semibold font-mono">Why Build a URL Shortener?</h2>
         <p>
           On the surface, shortening a link looks trivial. Underneath, it touches core distributed
           systems concepts:
@@ -30,16 +30,16 @@ export default function About() {
 
         <hr className="divider" />
 
-        <h2 className="text-lg font-semibold">Current Focus</h2>
+        <h2 className="text-lg font-semibold font-mono">Current Focus</h2>
         <ul className="list-disc list-inside">
           <li>Clean routing and redirect handling</li>
-          <li>Base62-encoded identifier strategy</li>
+          <li>Hash + Salted shortcode, to prevent collisions, starts at 4 characters</li>
           <li>Simple and predictable API design</li>
         </ul>
 
         <hr className="divider" />
 
-        <h2 className="text-lg font-semibold">What This Project Represents</h2>
+        <h2 className="text-lg font-semibold font-mono">What This Project Represents</h2>
         <p>
           Snipr is a bit of an expirement to build out a full stack project with a focus on
           simplicity and clarity. It is not meant to be a production-ready URL shortener, but rather
@@ -49,12 +49,10 @@ export default function About() {
 
         <hr className="divider" />
 
-        <h2 className="text-lg font-semibold">Roadmap</h2>
+        <h2 className="text-lg font-semibold font-mono">Roadmap</h2>
         <ul className="list-disc list-inside">
           <li>Custom domain support</li>
-          <li>Link expiration policies</li>
           <li>Lightweight analytics (privacy-conscious)</li>
-          <li>API rate limiting and abuse detection</li>
           <li>Horizontal scalability experiments</li>
         </ul>
 
