@@ -1,0 +1,30 @@
+name: Daily Cleanup
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cleanup endpoint
+        env:
+          CLEANUP_URL: ${{ secrets.CLEANUP_URL }}
+          CRON_AUTH_TOKEN: ${{ secrets.CRON_AUTH_TOKEN }}
+        run: |
+          if [ -z "$CLEANUP_URL" ]; then
+            echo "CLEANUP_URL secret is not set"
+            exit 1
+          fi
+
+          if [ -z "$CRON_AUTH_TOKEN" ]; then
+            echo "CRON_AUTH_TOKEN secret is not set"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error --silent \
+            -X POST "$CLEANUP_URL" \
+            -H "Authorization: Bearer $CRON_AUTH_TOKEN" \
+            -H "Content-Type: application/json"
