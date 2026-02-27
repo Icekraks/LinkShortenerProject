@@ -18,7 +18,7 @@ const Links = [
 
 const DesktopNavigation = () => {
   return (
-    <nav className="hidden md:block">
+    <nav aria-label="Primary" className="hidden md:block">
       <ul className="flex gap-4">
         {Links.map((link) => (
           <li key={link.name}>
@@ -28,6 +28,8 @@ const DesktopNavigation = () => {
                 <Link
                   href={link.href}
                   className="text-sm text-muted-foreground hover:text-foreground"
+                  target={link.href.startsWith("http") ? "_blank" : undefined}
+                  rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 />
               }
             >
