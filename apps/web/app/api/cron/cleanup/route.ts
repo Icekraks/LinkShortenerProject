@@ -23,12 +23,15 @@ const getProvidedToken = (request: NextRequest) => {
 }
 
 async function runCleanup(request: NextRequest) {
-  const expectedToken = process.env.CRON_AUTH_TOKEN?.trim()
+  const expectedToken = process.env.CRON_AUTH_TOKEN?.trim() ?? process.env.CRON_SECRET?.trim()
   const providedToken = getProvidedToken(request)
 
   try {
     if (!expectedToken) {
-      return NextResponse.json({ error: "CRON_AUTH_TOKEN is not configured" }, { status: 500 })
+      return NextResponse.json(
+        { error: "CRON_AUTH_TOKEN or CRON_SECRET is not configured" },
+        { status: 500 },
+      )
     }
 
     if (!providedToken || providedToken !== expectedToken) {
@@ -54,5 +57,9 @@ async function runCleanup(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  return runCleanup(request)
+}
+
+export async function GET(request: NextRequest) {
   return runCleanup(request)
 }

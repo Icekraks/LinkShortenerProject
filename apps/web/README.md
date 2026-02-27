@@ -65,6 +65,19 @@ Behavior:
 - Returns `404` for missing/expired links
 - Redirects with status `307` when found
 
+### `GET|POST /api/cron/cleanup`
+
+Runs scheduled cleanup tasks:
+
+- Deletes expired rows from `links`
+- Deletes stale rows from `rate_limit_events` (older than 7 days)
+- Requires auth token via:
+  - `Authorization: Bearer <token>`, or
+  - `x-cron-token: <token>`
+- Uses `CRON_AUTH_TOKEN` (or `CRON_SECRET`) on the server
+
+`GET` exists for Vercel Cron compatibility (Vercel invokes cron paths with `GET`).
+
 ## Testing
 
 ### Unit + Route tests (mocked)
@@ -80,6 +93,21 @@ INTEGRATION_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/link_shor
 ```
 
 If `INTEGRATION_DATABASE_URL` is not set, integration tests are skipped.
+
+## Vercel Cron Setup
+
+Cron schedule is configured in `apps/web/vercel.json`:
+
+```json
+{
+  "crons": [{ "path": "/api/cron/cleanup", "schedule": "0 3 * * *" }]
+}
+```
+
+Set one of these in your Vercel project environment variables:
+
+- `CRON_SECRET` (recommended for Vercel)
+- `CRON_AUTH_TOKEN`
 
 ## Useful Files
 
