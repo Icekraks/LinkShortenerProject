@@ -28,17 +28,19 @@ const Links = [
 
 const MobileNavigation = () => {
   return (
-    <nav className="md:hidden">
+    <nav aria-label="Mobile" className="md:hidden">
       <Drawer direction="right" closeOnRouteChange>
-        <DrawerTrigger>
-          <Menu className="w-8 h-8" />
+        <DrawerTrigger asChild>
+          <Button variant="outline" size="icon" aria-label="Open navigation menu">
+            <Menu className="w-8 h-8" aria-hidden="true" />
+          </Button>
         </DrawerTrigger>
         <DrawerContent>
           <DrawerHeader className="flex flex-row justify-between gap-x-4 items-center">
-            <DrawerTitle>Oh hey links to other pages.</DrawerTitle>
+            <DrawerTitle>Navigation menu</DrawerTitle>
             <DrawerClose asChild>
-              <Button variant="outline" size="icon">
-                <X className="w-4 h-4" />
+              <Button variant="outline" size="icon" aria-label="Close navigation menu">
+                <X className="w-4 h-4" aria-hidden="true" />
               </Button>
             </DrawerClose>
           </DrawerHeader>
@@ -49,7 +51,17 @@ const MobileNavigation = () => {
                   <Button
                     variant="outline"
                     className="w-full text-sm text-muted-foreground hover:text-foreground"
-                    render={<Link href={link.href} />}
+                    render={
+                      <Link
+                        href={link.href}
+                        target={link.href.startsWith("http") ? "_blank" : undefined}
+                        rel={
+                          link.href.startsWith("http")
+                            ? "noopener noreferrer"
+                            : undefined
+                        }
+                      />
+                    }
                   >
                     {link.name}
                   </Button>
