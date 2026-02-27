@@ -26,7 +26,7 @@ source ~/.zshrc
 Create either `.env` / `.env.local` at repo root, or `apps/web/.env.local`.
 
 ```env
-DATABASE_URL=postgresql://localhost:5432/link_shortener
+DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=require
 HASHIDS_SALT=replace-with-a-long-random-secret
 ```
 
@@ -34,6 +34,8 @@ Notes:
 
 - `HASHIDS_SALT` is required at startup (`apps/web/next.config.ts`).
 - `DATABASE_URL` falls back to `postgresql://localhost:5432/link_shortener` when empty.
+- `DATABASE_SSL=false` forces SSL off.
+- Otherwise, SSL is enabled when `DATABASE_SSL=true` or `sslmode` in `DATABASE_URL` is `require`, `verify-ca`, or `verify-full`.
 
 ## Run the App
 

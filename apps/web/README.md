@@ -13,7 +13,7 @@ Next.js app for the Link Shortener project.
 Set these in root `.env` / `.env.local` or `apps/web/.env.local`:
 
 ```env
-DATABASE_URL=postgresql://localhost:5432/link_shortener
+DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=require
 HASHIDS_SALT=replace-with-a-long-random-secret
 ```
 
@@ -21,6 +21,8 @@ Notes:
 
 - `HASHIDS_SALT` is required at startup.
 - If `DATABASE_URL` is empty, the app falls back to `postgresql://localhost:5432/link_shortener`.
+- `DATABASE_SSL=false` forces SSL off.
+- Otherwise, SSL is enabled when `DATABASE_SSL=true` or `sslmode` in `DATABASE_URL` is `require`, `verify-ca`, or `verify-full`.
 
 ## Scripts
 
