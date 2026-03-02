@@ -124,6 +124,4 @@ Integration tests run only when `INTEGRATION_DATABASE_URL` is set; otherwise the
 - Cron config: `apps/web/vercel.json`
 - Route: `GET|POST /api/cron/cleanup`
 - Schedule: `0 3 * * *` (daily at 03:00 UTC)
-- Required env token on deployment target:
-  - `CRON_SECRET` (recommended), or
-  - `CRON_AUTH_TOKEN`
+- Required env token on deployment target: `CRON_AUTH_TOKEN`

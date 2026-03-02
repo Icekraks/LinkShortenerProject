@@ -1,44 +1,59 @@
-import fs from "node:fs";
-import path from "node:path";
+import fs from "node:fs"
+import path from "node:path"
 
-import { NextRequest } from "next/server";
-import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server"
+import { Pool } from "pg"
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
-const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
-const describeIfIntegration = integrationDatabaseUrl ? describe : describe.skip;
+const redirectMock = vi.fn(() => {
+  throw new Error("NEXT_REDIRECT")
+})
+
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND")
+  },
+  redirect: redirectMock,
+}))
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: "localhost:3000" }),
+}))
+
+const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL
+const describeIfIntegration = integrationDatabaseUrl ? describe : describe.skip
 
 describeIfIntegration("Route integration", () => {
-  let pool: Pool | undefined;
+  let pool: Pool | undefined
 
   beforeAll(async () => {
-    process.env.DATABASE_URL = integrationDatabaseUrl;
-    process.env.HASHIDS_SALT = process.env.HASHIDS_SALT ?? "integration-test-salt";
+    process.env.DATABASE_URL = integrationDatabaseUrl
+    process.env.HASHIDS_SALT = process.env.HASHIDS_SALT ?? "integration-test-salt"
 
-    const schemaFilePath = path.resolve(__dirname, "../../db/schema.sql");
-    const schemaSql = fs.readFileSync(schemaFilePath, "utf8");
+    const schemaFilePath = path.resolve(__dirname, "../../db/schema.sql")
+    const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
 
-    pool = new Pool({ connectionString: integrationDatabaseUrl });
-    await pool.query(schemaSql);
-  });
+    pool = new Pool({ connectionString: integrationDatabaseUrl })
+    await pool.query(schemaSql)
+  })
 
   beforeEach(async () => {
     if (!pool) {
-      throw new Error("Integration pool was not initialized");
+      throw new Error("Integration pool was not initialized")
     }
 
-    await pool.query("TRUNCATE TABLE rate_limit_events, links RESTART IDENTITY");
-    vi.resetModules();
-  });
+    await pool.query("TRUNCATE TABLE rate_limit_events, links RESTART IDENTITY")
+    vi.resetModules()
+  })
 
   afterAll(async () => {
     if (pool) {
-      await pool.end();
+      await pool.end()
     }
-  });
+  })
 
   it("creates and resolves a short link", async () => {
-    const { POST } = await import("./api/generate-shortlink/route");
+    const { POST } = await import("./api/generate-shortlink/route")
     const postRequest = new NextRequest("http://localhost:3000/api/generate-shortlink", {
       method: "POST",
       body: JSON.stringify({
@@ -49,28 +64,28 @@ describeIfIntegration("Route integration", () => {
         "Content-Type": "application/json",
         origin: "http://localhost:3000",
       },
-    });
+    })
 
-    const createResponse = await POST(postRequest);
-    const createBody = await createResponse.json();
+    const createResponse = await POST(postRequest)
+    const createBody = await createResponse.json()
 
-    expect(createResponse.status).toBe(201);
-    expect(createBody.shortCode).toMatch(/^[a-z0-9]{4,}$/);
+    expect(createResponse.status).toBe(201)
+    expect(createBody.shortCode).toMatch(/^[a-z0-9]{4,}$/)
 
-    const { GET } = await import("./[shortCode]/route");
-    const getRequest = new NextRequest(`http://localhost:3000/${createBody.shortCode}`);
+    const shortCodePage = (await import("./[shortCode]/page")).default
 
-    const redirectResponse = await GET(getRequest, {
-      params: Promise.resolve({ shortCode: createBody.shortCode }),
-    });
+    await expect(
+      shortCodePage({
+        params: Promise.resolve({ shortCode: createBody.shortCode }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT")
 
-    expect(redirectResponse.status).toBe(307);
-    expect(redirectResponse.headers.get("location")).toBe("https://example.com/some/page");
-  });
+    expect(redirectMock).toHaveBeenCalledWith("https://example.com/some/page")
+  })
 
-  it("returns 404 for expired short links", async () => {
+  it("shows not found for expired short links", async () => {
     if (!pool) {
-      throw new Error("Integration pool was not initialized");
+      throw new Error("Integration pool was not initialized")
     }
 
     await pool.query(
@@ -79,17 +94,14 @@ describeIfIntegration("Route integration", () => {
         VALUES ($1, $2, NOW() - INTERVAL '1 hour')
       `,
       ["zzzz", "https://example.com/expired"],
-    );
+    )
 
-    const { GET } = await import("./[shortCode]/route");
-    const request = new NextRequest("http://localhost:3000/zzzz");
+    const shortCodePage = (await import("./[shortCode]/page")).default
 
-    const response = await GET(request, {
-      params: Promise.resolve({ shortCode: "zzzz" }),
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(body.error).toBe("Link expired or not found");
-  });
-});
+    await expect(
+      shortCodePage({
+        params: Promise.resolve({ shortCode: "zzzz" }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+})
