@@ -2,13 +2,35 @@ import "server-only"
 import { Pool } from "pg"
 
 const defaultDatabaseUrl = "postgresql://localhost:5432/link_shortener"
+const legacySslModes = new Set(["prefer", "require", "verify-ca"])
 
 declare global {
   var __linkShortenerPool: Pool | undefined
 }
 
 const envDatabaseUrl = process.env.DATABASE_URL?.trim()
-const connectionString = envDatabaseUrl ? envDatabaseUrl : defaultDatabaseUrl
+
+const normalizeDatabaseUrl = (databaseUrl: string) => {
+  try {
+    const parsedUrl = new URL(databaseUrl)
+    const sslMode = parsedUrl.searchParams.get("sslmode")?.toLowerCase()
+    const useLibpqCompat =
+      parsedUrl.searchParams.get("uselibpqcompat")?.toLowerCase() === "true"
+
+    if (sslMode && legacySslModes.has(sslMode) && !useLibpqCompat) {
+      parsedUrl.searchParams.set("sslmode", "verify-full")
+      return parsedUrl.toString()
+    }
+
+    return databaseUrl
+  } catch {
+    return databaseUrl
+  }
+}
+
+const connectionString = envDatabaseUrl
+  ? normalizeDatabaseUrl(envDatabaseUrl)
+  : defaultDatabaseUrl
 
 const useSsl = (() => {
   if (process.env.DATABASE_SSL === "false") {
@@ -24,7 +46,7 @@ const useSsl = (() => {
   }
 
   try {
-    const databaseUrl = new URL(envDatabaseUrl)
+    const databaseUrl = new URL(connectionString)
     const sslMode = databaseUrl.searchParams.get("sslmode")?.toLowerCase()
 
     return sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full"
