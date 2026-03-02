@@ -74,7 +74,7 @@ Runs scheduled cleanup tasks:
 - Requires auth token via:
   - `Authorization: Bearer <token>`, or
   - `x-cron-token: <token>`
-- Uses `CRON_AUTH_TOKEN` on the server
+- Uses `CRON_SECRET` on the server
 
 `GET` exists for Vercel Cron compatibility (Vercel invokes cron paths with `GET`).
 
@@ -106,7 +106,7 @@ Cron schedule is configured in `apps/web/vercel.json`:
 
 Set this in your Vercel project environment variables:
 
-- `CRON_AUTH_TOKEN`
+- `CRON_SECRET`
 
 ## Useful Files
 
