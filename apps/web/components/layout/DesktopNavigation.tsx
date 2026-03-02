@@ -24,6 +24,7 @@ const DesktopNavigation = () => {
           <li key={link.name}>
             <Button
               variant="outline"
+              nativeButton={false}
               render={
                 <Link
                   href={link.href}

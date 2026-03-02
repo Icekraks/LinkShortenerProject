@@ -10,8 +10,11 @@ export const runtime = "nodejs"
 
 const getProvidedToken = (request: NextRequest) => {
   const authorizationHeader = request.headers.get("authorization")
-  if (authorizationHeader?.startsWith("Bearer ")) {
-    return authorizationHeader.slice("Bearer ".length).trim()
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i)
+    if (bearerMatch?.[1]) {
+      return bearerMatch[1].trim()
+    }
   }
 
   const cronHeaderToken = request.headers.get("x-cron-token")?.trim()
@@ -23,15 +26,12 @@ const getProvidedToken = (request: NextRequest) => {
 }
 
 async function runCleanup(request: NextRequest) {
-  const expectedToken = process.env.CRON_AUTH_TOKEN?.trim() ?? process.env.CRON_SECRET?.trim()
+  const expectedToken = process.env.CRON_AUTH_TOKEN?.trim()
   const providedToken = getProvidedToken(request)
 
   try {
     if (!expectedToken) {
-      return NextResponse.json(
-        { error: "CRON_AUTH_TOKEN or CRON_SECRET is not configured" },
-        { status: 500 },
-      )
+      return NextResponse.json({ error: "CRON_AUTH_TOKEN is not configured" }, { status: 500 })
     }
 
     if (!providedToken || providedToken !== expectedToken) {

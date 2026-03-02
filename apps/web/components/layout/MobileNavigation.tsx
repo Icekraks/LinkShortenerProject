@@ -50,16 +50,13 @@ const MobileNavigation = () => {
                 <li key={link.name}>
                   <Button
                     variant="outline"
+                    nativeButton={false}
                     className="w-full text-sm text-muted-foreground hover:text-foreground"
                     render={
                       <Link
                         href={link.href}
                         target={link.href.startsWith("http") ? "_blank" : undefined}
-                        rel={
-                          link.href.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
+                        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       />
                     }
                   >
