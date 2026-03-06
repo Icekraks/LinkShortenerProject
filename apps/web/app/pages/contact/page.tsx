@@ -9,15 +9,15 @@ export default function Contact() {
         <p className="mt-4 text-center">
           If you have any questions or feedback, feel free to reach out to us through the following
           channels:
-          <ul className="list-disc list-inside mt-2">
-            <li>
-              Github:{" "}
-              <a href="https://github.com/Icekraks" className="text-blue-500 hover:underline">
-                https://github.com/Icekraks
-              </a>
-            </li>
-          </ul>
         </p>
+        <ul className="ml-6 list-disc list-inside mt-2">
+          <li>
+            Github:{" "}
+            <a href="https://github.com/Icekraks" className="text-blue-500 hover:underline">
+              https://github.com/Icekraks
+            </a>
+          </li>
+        </ul>
       </main>
     </div>
   )

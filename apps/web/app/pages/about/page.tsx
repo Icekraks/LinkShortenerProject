@@ -56,7 +56,7 @@ export default function About() {
           <li>Horizontal scalability experiments</li>
         </ul>
 
-        <p className="text-muted">
+        <p>
           Snipr is an evolving systems laboratory — built to learn deeply, implement cleanly, and
           ship thoughtfully.
         </p>

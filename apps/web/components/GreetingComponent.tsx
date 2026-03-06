@@ -1,16 +1,48 @@
+"use client"
+
+import { useIsMounted } from "@/hooks/useIsMounted"
+
 const GreetingComponent = () => {
+  const mounted = useIsMounted()
+  const fallbackGreeting =
+    "Good morning, and in case I don't see ya, good afternoon, good evening, and good night!"
+
+  const timeZone = mounted ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined
+
+  const currentHour = (() => {
+    if (!mounted || !timeZone) return null
+
+    try {
+      return Number(
+        new Intl.DateTimeFormat("en-US", {
+          hour: "numeric",
+          hour12: false,
+          timeZone,
+        }).format(new Date()),
+      )
+    } catch {
+      return null
+    }
+  })()
+
   const currentGreeting = () => {
-    const currentHour = new Date().getHours()
+    if (currentHour === null) {
+      return fallbackGreeting
+    }
 
     if (currentHour >= 5 && currentHour < 12) {
       return "Good morning!"
-    } else if (currentHour >= 12 && currentHour < 17) {
-      return "Good afternoon!"
-    } else if (currentHour >= 17 && currentHour < 21) {
-      return "Good evening!"
-    } else {
-      return "Good night!"
     }
+
+    if (currentHour >= 12 && currentHour < 17) {
+      return "Good afternoon!"
+    }
+
+    if (currentHour >= 17 && currentHour < 21) {
+      return "Good evening!"
+    }
+
+    return "Good night!"
   }
 
   return (
