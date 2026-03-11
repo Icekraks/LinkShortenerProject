@@ -11,6 +11,7 @@ export type CreateShortLinkSuccessResponse = {
   expiryHours: number
   shortPath: string
   shortUrl: string
+  qrCodeDataUrl: string
 }
 
 export type CreateShortLinkErrorResponse = {

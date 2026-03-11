@@ -10,10 +10,17 @@ import {
   INSERT_SHORT_LINK_WITH_CODE_QUERY,
 } from "@/sql/generateShortLink"
 import type { CreateShortLinkBody } from "@/types/short-link"
+import QRCode from "qrcode"
 
 export const runtime = "nodejs"
 
 const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24])
+const QR_CODE_OPTIONS = {
+  errorCorrectionLevel: "H",
+  type: "image/png",
+  width: 1024,
+  margin: 1,
+} as const
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,6 +123,9 @@ export async function POST(request: NextRequest) {
     }
 
     const shortPath = `/${created.short_code}`
+    const shortUrl = new URL(shortPath, request.nextUrl.origin).toString()
+    const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, QR_CODE_OPTIONS)
+
     return NextResponse.json(
       {
         id: created.id,
@@ -125,7 +135,8 @@ export async function POST(request: NextRequest) {
         expiryHours,
         expiresAt: created.expires_at,
         shortPath,
-        shortUrl: new URL(shortPath, request.nextUrl.origin).toString(),
+        shortUrl,
+        qrCodeDataUrl,
       },
       { status: 201 },
     )
