@@ -1,7 +1,6 @@
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
 import { useState } from "react"
 import { Button } from "@ui/button"
-import { Input } from "@ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
 import { cn } from "@/lib/utils"
 import { CircleCheckIcon, Clipboard, ClipboardCheck } from "lucide-react"
