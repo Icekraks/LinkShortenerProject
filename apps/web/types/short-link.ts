@@ -9,10 +9,10 @@ export type CreateShortLinkSuccessResponse = {
   originalUrl: string
   createdAt: string
   expiryHours: number
-  expiresAt: Date | null
+  expiresAt: string | null
   shortPath: string
   shortUrl: string
-  qrCodeDataUrl: string
+  qrCodeDataUrl?: string
 }
 
 export type CreateShortLinkErrorResponse = {

@@ -1,5 +1,5 @@
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@ui/button"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,26 @@ type LinkShortenerSuccessProps = {
 const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessProps) => {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const resetCopiedAfterDelay = () => {
+    if (copiedTimeoutRef.current) {
+      clearTimeout(copiedTimeoutRef.current)
+    }
+
+    copiedTimeoutRef.current = setTimeout(() => {
+      setCopied(false)
+      copiedTimeoutRef.current = null
+    }, 2000)
+  }
 
   const handleCopy = async () => {
     setError(null)
@@ -23,13 +43,17 @@ const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessPr
     try {
       await navigator.clipboard.writeText(createdLink.shortUrl)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      resetCopiedAfterDelay()
     } catch {
       setError("Unable to copy link to clipboard")
     }
   }
 
   const handleDownload = () => {
+    if (!createdLink.qrCodeDataUrl) {
+      return
+    }
+
     const a = document.createElement("a")
     a.href = createdLink.qrCodeDataUrl
     a.download = `${createdLink.shortCode}-sniprUrl.png`
@@ -73,13 +97,16 @@ const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessPr
         >
           {copied ? "Copied Shortened URL" : "Copy Shortened URL"}
         </Button>
-        <Button
-          type="button"
-          onClick={handleDownload}
-          aria-label="Download generated short URL QR Code"
-        >
-          Download QR Code
-        </Button>
+
+        {createdLink.qrCodeDataUrl && (
+          <Button
+            type="button"
+            onClick={handleDownload}
+            aria-label="Download generated short URL QR Code"
+          >
+            Download QR Code
+          </Button>
+        )}
 
         <Button type="button" onClick={resetForm} aria-label="Generate a new short link">
           Generate a New Short Link

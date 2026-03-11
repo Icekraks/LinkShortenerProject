@@ -46,15 +46,17 @@ const isDataUrl = (value: string) => value.startsWith("data:")
 const isCreateShortLinkSuccessResponse = (
   data: CreateShortLinkResponse | null,
 ): data is CreateShortLinkSuccessResponse => {
-  if (!data || !("shortUrl" in data) || !("shortCode" in data) || !("qrCodeDataUrl" in data)) {
+  if (!data || !("shortUrl" in data) || !("shortCode" in data)) {
     return false
   }
+
+  const qrCodeDataUrl = "qrCodeDataUrl" in data ? data.qrCodeDataUrl : undefined
 
   return Boolean(
     typeof data.shortUrl === "string" &&
     typeof data.shortCode === "string" &&
-    typeof data.qrCodeDataUrl === "string" &&
-    isDataUrl(data.qrCodeDataUrl),
+    (qrCodeDataUrl === undefined ||
+      (typeof qrCodeDataUrl === "string" && isDataUrl(qrCodeDataUrl))),
   )
 }
 
