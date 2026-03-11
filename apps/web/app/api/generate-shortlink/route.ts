@@ -18,7 +18,7 @@ const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24])
 const QR_CODE_OPTIONS = {
   errorCorrectionLevel: "H",
   type: "image/png",
-  width: 1024,
+  width: 512,
   margin: 1,
 } as const
 
@@ -87,6 +87,9 @@ export async function POST(request: NextRequest) {
           expires_at: Date | null
         }
       | undefined
+    let qrCodeDataUrl: string | undefined
+    let shortPath: string | undefined
+    let shortUrl: string | undefined
 
     try {
       await client.query("BEGIN")
@@ -109,8 +112,17 @@ export async function POST(request: NextRequest) {
         expires_at: Date | null
       }>(INSERT_SHORT_LINK_WITH_CODE_QUERY, [idValue, shortCode, normalizedUrl, expiryDate])
 
-      await client.query("COMMIT")
       created = insertResult.rows[0]
+
+      if (!created) {
+        throw new Error("Failed to create short link")
+      }
+
+      shortPath = `/${created.short_code}`
+      shortUrl = new URL(shortPath, request.nextUrl.origin).toString()
+      qrCodeDataUrl = await QRCode.toDataURL(shortUrl, QR_CODE_OPTIONS)
+
+      await client.query("COMMIT")
     } catch (error) {
       await client.query("ROLLBACK")
       throw error
@@ -118,13 +130,9 @@ export async function POST(request: NextRequest) {
       client.release()
     }
 
-    if (!created) {
+    if (!created || !shortPath || !shortUrl || !qrCodeDataUrl) {
       return NextResponse.json({ error: "Failed to create short link" }, { status: 500 })
     }
-
-    const shortPath = `/${created.short_code}`
-    const shortUrl = new URL(shortPath, request.nextUrl.origin).toString()
-    const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, QR_CODE_OPTIONS)
 
     return NextResponse.json(
       {

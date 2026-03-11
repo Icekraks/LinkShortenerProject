@@ -41,10 +41,21 @@ const getExpiryLabel = (value: number) => {
   return expiryOptions.find((option) => option.value === value)?.label ?? `${value} hours`
 }
 
+const isDataUrl = (value: string) => value.startsWith("data:")
+
 const isCreateShortLinkSuccessResponse = (
   data: CreateShortLinkResponse | null,
 ): data is CreateShortLinkSuccessResponse => {
-  return Boolean(data && "shortUrl" in data && "shortCode" in data)
+  if (!data || !("shortUrl" in data) || !("shortCode" in data) || !("qrCodeDataUrl" in data)) {
+    return false
+  }
+
+  return Boolean(
+    typeof data.shortUrl === "string" &&
+    typeof data.shortCode === "string" &&
+    typeof data.qrCodeDataUrl === "string" &&
+    isDataUrl(data.qrCodeDataUrl),
+  )
 }
 
 const LinkShortenerForm = () => {
