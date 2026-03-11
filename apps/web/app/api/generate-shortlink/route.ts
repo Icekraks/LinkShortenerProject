@@ -10,10 +10,17 @@ import {
   INSERT_SHORT_LINK_WITH_CODE_QUERY,
 } from "@/sql/generateShortLink"
 import type { CreateShortLinkBody } from "@/types/short-link"
+import QRCode from "qrcode"
 
 export const runtime = "nodejs"
 
 const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24])
+const QR_CODE_OPTIONS = {
+  errorCorrectionLevel: "H",
+  type: "image/png",
+  width: 512,
+  margin: 1,
+} as const
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,6 +87,8 @@ export async function POST(request: NextRequest) {
           expires_at: Date | null
         }
       | undefined
+    let shortPath: string | undefined
+    let shortUrl: string | undefined
 
     try {
       await client.query("BEGIN")
@@ -102,8 +111,16 @@ export async function POST(request: NextRequest) {
         expires_at: Date | null
       }>(INSERT_SHORT_LINK_WITH_CODE_QUERY, [idValue, shortCode, normalizedUrl, expiryDate])
 
-      await client.query("COMMIT")
       created = insertResult.rows[0]
+
+      if (!created) {
+        throw new Error("Failed to create short link")
+      }
+
+      shortPath = `/${created.short_code}`
+      shortUrl = new URL(shortPath, request.nextUrl.origin).toString()
+
+      await client.query("COMMIT")
     } catch (error) {
       await client.query("ROLLBACK")
       throw error
@@ -111,21 +128,29 @@ export async function POST(request: NextRequest) {
       client.release()
     }
 
-    if (!created) {
+    if (!created || !shortPath || !shortUrl) {
       return NextResponse.json({ error: "Failed to create short link" }, { status: 500 })
     }
 
-    const shortPath = `/${created.short_code}`
+    let qrCodeDataUrl: string | undefined
+
+    try {
+      qrCodeDataUrl = await QRCode.toDataURL(shortUrl, QR_CODE_OPTIONS)
+    } catch (error) {
+      console.warn("Failed to generate QR code", error)
+    }
+
     return NextResponse.json(
       {
         id: created.id,
         shortCode: created.short_code,
         originalUrl: created.original_url,
-        createdAt: created.created_at,
+        createdAt: created.created_at.toISOString(),
         expiryHours,
-        expiresAt: created.expires_at,
+        expiresAt: created.expires_at?.toISOString() ?? null,
         shortPath,
-        shortUrl: new URL(shortPath, request.nextUrl.origin).toString(),
+        shortUrl,
+        qrCodeDataUrl,
       },
       { status: 201 },
     )

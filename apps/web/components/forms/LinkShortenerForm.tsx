@@ -1,13 +1,13 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { useForm } from "@tanstack/react-form-nextjs"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
 import { Button } from "@ui/button"
 import type { CreateShortLinkResponse, CreateShortLinkSuccessResponse } from "@/types/short-link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/select"
 import { Label } from "@ui/label"
 import { Input } from "@ui/input"
-import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import LinkShortenerSuccess from "@components/forms/LinkShortenerSuccess"
 
 const validateUrl = (value: string) => {
   const raw = value.trim()
@@ -41,31 +41,28 @@ const getExpiryLabel = (value: number) => {
   return expiryOptions.find((option) => option.value === value)?.label ?? `${value} hours`
 }
 
+const isDataUrl = (value: string) => value.startsWith("data:")
+
 const isCreateShortLinkSuccessResponse = (
   data: CreateShortLinkResponse | null,
 ): data is CreateShortLinkSuccessResponse => {
-  return Boolean(data && "shortUrl" in data && "shortCode" in data)
+  if (!data || !("shortUrl" in data) || !("shortCode" in data)) {
+    return false
+  }
+
+  const qrCodeDataUrl = "qrCodeDataUrl" in data ? data.qrCodeDataUrl : undefined
+
+  return Boolean(
+    typeof data.shortUrl === "string" &&
+    typeof data.shortCode === "string" &&
+    (qrCodeDataUrl === undefined ||
+      (typeof qrCodeDataUrl === "string" && isDataUrl(qrCodeDataUrl))),
+  )
 }
 
 const LinkShortenerForm = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!successMessage) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setSuccessMessage(null)
-    }, 5000)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [successMessage])
 
   const form = useForm({
     defaultValues: {
@@ -75,7 +72,6 @@ const LinkShortenerForm = () => {
     onSubmit: async (values) => {
       setSubmitError(null)
       setCreatedLink(null)
-      setCopied(false)
       const normalizedUrl = new URL(values.value.url.trim()).toString()
 
       const response = await fetch("/api/generate-shortlink", {
@@ -94,41 +90,27 @@ const LinkShortenerForm = () => {
       if (!response.ok) {
         const errorMessage = data && "error" in data ? data.error : "Failed to create short link"
         setSubmitError(errorMessage)
+        toast.error(errorMessage)
         return
       }
 
       if (!isCreateShortLinkSuccessResponse(data)) {
         setSubmitError("API handler returned an invalid response")
+        toast.error("API handler returned an invalid response")
         return
       }
 
       setCreatedLink(data)
-      setSuccessMessage("Short link created successfully")
+      toast.success("Short link created successfully")
       form.reset()
     },
   })
 
-  const handleCopy = async () => {
-    if (!createdLink) {
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(createdLink.shortUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setSubmitError("Unable to copy link to clipboard")
-    }
-  }
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setSubmitError(null)
     setCreatedLink(null)
-    setCopied(false)
-    setSuccessMessage(null)
     form.reset()
-  }
+  }, [form])
 
   return !createdLink ? (
     <form
@@ -138,6 +120,10 @@ const LinkShortenerForm = () => {
         void form.handleSubmit(e)
       }}
     >
+      <p className="text-muted-foreground text-sm mb-4">
+        Enter the URL you want to shorten and select the expiry time. Once submitted, your shortened
+        URL will be generated.
+      </p>
       <div className="flex flex-col md:flex-row items-center mt-2 gap-4">
         <form.Field
           name="url"
@@ -147,7 +133,7 @@ const LinkShortenerForm = () => {
         >
           {(field) => (
             <div className="w-full">
-              <Label htmlFor="url" className="mb-1">
+              <Label htmlFor="url" className="mb-2">
                 Long URL
               </Label>
               <Input
@@ -171,7 +157,7 @@ const LinkShortenerForm = () => {
         <form.Field name="expiryHours">
           {(field) => (
             <div className="w-full">
-              <Label htmlFor="expiryHours" className="mb-1">
+              <Label htmlFor="expiryHours" className="mb-2">
                 Expiry Time
               </Label>
               <Select
@@ -208,26 +194,7 @@ const LinkShortenerForm = () => {
       ) : null}
     </form>
   ) : (
-    <div className="mt-3 space-y-2" role="status" aria-live="polite" aria-atomic="true">
-      <InputGroup>
-        <InputGroupInput value={createdLink.shortUrl} readOnly aria-label="Generated short URL" />
-        <InputGroupAddon align="inline-end" className="pr-0">
-          <Button
-            type="button"
-            onClick={handleCopy}
-            aria-label="Copy generated short URL"
-            className={cn("", copied && "bg-emerald-600 hover:bg-emerald-700")}
-          >
-            {copied ? "Copied" : "Copy Shortened URL"}
-          </Button>
-        </InputGroupAddon>
-      </InputGroup>
-      <Button type="button" onClick={resetForm} aria-label="Reset form">
-        Generate a New Short Link
-      </Button>
-      {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
-      {copied ? <p className="sr-only">Generated short URL copied to clipboard</p> : null}
-    </div>
+    <LinkShortenerSuccess createdLink={createdLink} resetForm={resetForm} />
   )
 }
 
