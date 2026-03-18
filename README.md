@@ -23,16 +23,18 @@ source ~/.zshrc
 
 ## Environment Variables
 
-Create either `.env` / `.env.local` at repo root, or `apps/web/.env.local`.
+Copy `.env.example` to `.env`, or create either `.env` / `.env.local` at repo root, or `apps/web/.env.local`.
 
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=verify-full
 HASHIDS_SALT=replace-with-a-long-random-secret
+SHORT_CODE_BLACKLIST=admin,api,www,root,support,help
 ```
 
 Notes:
 
 - `HASHIDS_SALT` is required at startup (`apps/web/next.config.ts`).
+- `SHORT_CODE_BLACKLIST` is optional, comma-separated, and case-insensitive.
 - `DATABASE_URL` falls back to `postgresql://localhost:5432/link_shortener` when empty.
 - `DATABASE_SSL=false` forces SSL off.
 - Otherwise, SSL is enabled when `DATABASE_SSL=true` or `sslmode` in `DATABASE_URL` is `verify-full`.

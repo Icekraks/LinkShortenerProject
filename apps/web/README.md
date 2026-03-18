@@ -15,11 +15,13 @@ Set these in root `.env` / `.env.local` or `apps/web/.env.local`:
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=verify-full
 HASHIDS_SALT=replace-with-a-long-random-secret
+SHORT_CODE_BLACKLIST=admin,api,www,root,support,help
 ```
 
 Notes:
 
 - `HASHIDS_SALT` is required at startup.
+- `SHORT_CODE_BLACKLIST` is optional. Use a comma-separated list of reserved short codes (case-insensitive).
 - If `DATABASE_URL` is empty, the app falls back to `postgresql://localhost:5432/link_shortener`.
 - `DATABASE_SSL=false` forces SSL off.
 - Otherwise, SSL is enabled when `DATABASE_SSL=true` or `sslmode` in `DATABASE_URL` is `verify-full`.
@@ -52,6 +54,7 @@ Behavior:
 - Same-origin request check (`403` if not same-origin)
 - Per-client create rate limiting (`10 / 60s`)
 - URL validation and expiry validation (`1, 4, 6, 12, 24` hours)
+- Blocks reserved custom short codes from the built-in list and `SHORT_CODE_BLACKLIST`
 - Blocks self-domain targets
 - Generates shortcode via Hashids (lowercase alphanumeric, min length 4)
 

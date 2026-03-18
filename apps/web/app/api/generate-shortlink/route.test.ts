@@ -108,6 +108,29 @@ describe("POST /api/generate-shortlink", () => {
     expect(body.error).toBe("Cannot shorten URLs from this domain")
   })
 
+  it("returns 400 when custom short code is blacklisted", async () => {
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({
+        originalUrl: "https://example.com",
+        expiryHours: 24,
+        customShortCode: "admin",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe("This custom short code is reserved. Please choose a different one.")
+    expect(connectMock).not.toHaveBeenCalled()
+  })
+
   it("creates a short link and returns 201", async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [] })
@@ -150,6 +173,41 @@ describe("POST /api/generate-shortlink", () => {
     expect(releaseMock).toHaveBeenCalledTimes(1)
     expect(queryMock).toHaveBeenCalledWith("BEGIN")
     expect(queryMock).toHaveBeenCalledWith("COMMIT")
+  })
+
+  it("returns 409 when custom short code already exists", async () => {
+    const duplicateShortCodeError = {
+      code: "23505",
+      constraint: "links_short_code_unique",
+    }
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "123" }] })
+      .mockRejectedValueOnce(duplicateShortCodeError)
+      .mockResolvedValueOnce({ rows: [] })
+
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({
+        originalUrl: "https://example.com",
+        expiryHours: 24,
+        customShortCode: "abcd",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.error).toBe("Short code already exists")
+    expect(queryMock).toHaveBeenCalledWith("ROLLBACK")
+    expect(releaseMock).toHaveBeenCalledTimes(1)
   })
 
   it("returns 201 without qrCodeDataUrl when QR code generation fails", async () => {
