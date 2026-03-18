@@ -69,6 +69,7 @@ const LinkShortenerForm = () => {
     defaultValues: {
       url: "",
       expiryHours: 24,
+      custom_short_code: "",
     },
     onSubmit: async (values) => {
       setSubmitError(null)
@@ -83,6 +84,7 @@ const LinkShortenerForm = () => {
         body: JSON.stringify({
           originalUrl: normalizedUrl,
           expiryHours: values.value.expiryHours,
+          customShortCode: values.value.custom_short_code,
         }),
       })
 
@@ -126,7 +128,7 @@ const LinkShortenerForm = () => {
         Enter the URL you want to shorten and select the expiry time. Once submitted, your shortened
         URL will be generated.
       </p>
-      <div className="flex flex-col md:flex-row items-center mt-2 gap-4">
+      <div className="flex flex-col md:flex-row items-start mt-2 gap-4">
         <form.Field
           name="url"
           validators={{
@@ -134,8 +136,8 @@ const LinkShortenerForm = () => {
           }}
         >
           {(field) => (
-            <div className="w-full">
-              <Label htmlFor="url" className="mb-2">
+            <div className="w-full md:w-1/2">
+              <Label htmlFor="url" className="mb-2" required>
                 Long URL
               </Label>
               <Input
@@ -155,32 +157,81 @@ const LinkShortenerForm = () => {
             </div>
           )}
         </form.Field>
+        <fieldset className="flex flex-col md:flex-row items-start gap-4 w-full md:w-1/2">
+          <legend className="sr-only">Short link options</legend>
+          <form.Field
+            name="custom_short_code"
+            validators={{
+              onChange: ({ value }) => {
+                const trimmed = value.trim()
 
-        <form.Field name="expiryHours">
-          {(field) => (
-            <div className="w-full">
-              <Label htmlFor="expiryHours" className="mb-2">
-                Expiry Time
-              </Label>
-              <Select
-                value={field.state.value.toString()}
-                onValueChange={(value) => field.handleChange(Number(value))}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>{getExpiryLabel(field.state.value)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {expiryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </form.Field>
+                if (trimmed === "") {
+                  return undefined
+                }
+
+                if (!/^[a-z0-9]+$/.test(trimmed)) {
+                  return "Custom short code can only contain lowercase letters and numbers"
+                }
+
+                if (trimmed.length < 4) {
+                  return "Custom short code must be at least 4 characters long"
+                }
+
+                return undefined
+              },
+            }}
+          >
+            {(field) => (
+              <div className="w-full md:w-2/3">
+                <Label htmlFor="custom_short_code" className="mb-2">
+                  Custom Short Code
+                </Label>
+                <Input
+                  id="custom_short_code"
+                  type="text"
+                  placeholder="Enter custom short code"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={
+                    field.state.meta.errors.length > 0 ? "custom_short_code_error" : undefined
+                  }
+                />
+                {field.state.meta.errors[0] ? (
+                  <p id="custom_short_code_error" className="mt-2 text-sm text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </form.Field>
+          <form.Field name="expiryHours">
+            {(field) => (
+              <div className="w-full md:w-1/3">
+                <Label htmlFor="expiryHours" className="mb-2" required>
+                  Expiry Time
+                </Label>
+                <Select
+                  value={field.state.value.toString()}
+                  onValueChange={(value) => field.handleChange(Number(value))}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>{getExpiryLabel(field.state.value)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {expiryOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </form.Field>
+        </fieldset>
       </div>
       <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
         {([canSubmit, isSubmitting]) => (

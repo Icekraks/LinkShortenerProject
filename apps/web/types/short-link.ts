@@ -1,6 +1,7 @@
 export type CreateShortLinkBody = {
   originalUrl?: string
   expiryHours?: number
+  customShortCode?: string
 }
 
 export type CreateShortLinkSuccessResponse = {
