@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-import { dbPool } from "@/lib/db"
+import { dbPool } from "@lib/db"
 import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest, isSelfDomainTarget } from "@/helpers/urlHelpers"
-import { isBlacklistedShortCode } from "@/lib/shortCodeBlacklist"
-import { encodeLinkIdToShortCode } from "@/lib/shortCode"
+import { QR_CODE_OPTIONS } from "@lib/qrCode"
+import { isBlacklistedShortCode } from "@lib/shortCodeBlacklist"
+import { encodeLinkIdToShortCode } from "@lib/shortCode"
 import {
   ALLOCATE_NEXT_LINK_ID_QUERY,
   INSERT_SHORT_LINK_WITH_CODE_QUERY,
@@ -16,12 +17,6 @@ import QRCode from "qrcode"
 export const runtime = "nodejs"
 
 const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24])
-const QR_CODE_OPTIONS = {
-  errorCorrectionLevel: "H",
-  type: "image/png",
-  width: 512,
-  margin: 1,
-} as const
 
 const CUSTOM_SHORT_CODE_PATTERN = /^[a-z0-9]{4,}$/
 

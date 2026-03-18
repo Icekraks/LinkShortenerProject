@@ -8,6 +8,7 @@ import { Label } from "@ui/label"
 import { Input } from "@ui/input"
 import { toast } from "sonner"
 import LinkShortenerSuccess from "@components/forms/LinkShortenerSuccess"
+import { saveShortLinkToHistory } from "@lib/shortLinkHistory"
 
 const validateUrl = (value: string) => {
   const raw = value.trim()
@@ -102,6 +103,7 @@ const LinkShortenerForm = () => {
         return
       }
 
+      saveShortLinkToHistory(data)
       setCreatedLink(data)
       toast.success("Short link created successfully")
       form.reset()

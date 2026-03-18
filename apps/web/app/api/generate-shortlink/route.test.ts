@@ -11,7 +11,7 @@ const isSelfDomainTargetMock = vi.fn()
 const encodeLinkIdToShortCodeMock = vi.fn()
 const qrCodeToDataURLMock = vi.fn()
 
-vi.mock("@/lib/db", () => ({
+vi.mock("@lib/db", () => ({
   dbPool: {
     connect: connectMock,
   },
@@ -30,7 +30,7 @@ vi.mock("@/helpers/urlHelpers", () => ({
   isSelfDomainTarget: isSelfDomainTargetMock,
 }))
 
-vi.mock("@/lib/shortCode", () => ({
+vi.mock("@lib/shortCode", () => ({
   encodeLinkIdToShortCode: encodeLinkIdToShortCodeMock,
 }))
 
@@ -206,6 +206,120 @@ describe("POST /api/generate-shortlink", () => {
 
     expect(response.status).toBe(409)
     expect(body.error).toBe("Short code already exists")
+    expect(queryMock).toHaveBeenCalledWith("ROLLBACK")
+    expect(releaseMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 403 when request is cross-origin", async () => {
+    isSameOriginRequestMock.mockReturnValue(false)
+
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({ originalUrl: "https://example.com", expiryHours: 24 }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe("Forbidden")
+    expect(connectMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when originalUrl is missing", async () => {
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({ expiryHours: 24 }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe("Valid URL is required")
+    expect(connectMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when originalUrl is not a valid URL", async () => {
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({ originalUrl: "not-a-url", expiryHours: 24 }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe("Invalid URL")
+  })
+
+  it("returns 400 when customShortCode has invalid format", async () => {
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({
+        originalUrl: "https://example.com",
+        expiryHours: 24,
+        customShortCode: "ab!",
+      }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toMatch(/at least 4 characters/)
+    expect(connectMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when expiryHours is not an allowed value", async () => {
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({ originalUrl: "https://example.com", expiryHours: 2 }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe("expiryHours must be one of: 1, 4, 6, 12, 24")
+    expect(connectMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 on unexpected DB error", async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ id: "123" }] }) // ALLOCATE_NEXT_LINK_ID
+      .mockRejectedValueOnce(new Error("unexpected db error")) // INSERT
+      .mockResolvedValueOnce({ rows: [] }) // ROLLBACK
+
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({ originalUrl: "https://example.com", expiryHours: 24 }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body.error).toBe("Failed to create short link")
     expect(queryMock).toHaveBeenCalledWith("ROLLBACK")
     expect(releaseMock).toHaveBeenCalledTimes(1)
   })

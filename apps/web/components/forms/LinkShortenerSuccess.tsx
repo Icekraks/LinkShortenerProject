@@ -1,9 +1,10 @@
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "@ui/button"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
-import { cn } from "@/lib/utils"
+import { cn } from "@lib/utils"
 import { CircleCheckIcon, Clipboard, ClipboardCheck } from "lucide-react"
+import { useShareActions } from "@hooks/useShareActions"
 
 type LinkShortenerSuccessProps = {
   createdLink: CreateShortLinkSuccessResponse
@@ -11,28 +12,11 @@ type LinkShortenerSuccessProps = {
 }
 
 const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessProps) => {
-  const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (copiedTimeoutRef.current) {
-        clearTimeout(copiedTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  const resetCopiedAfterDelay = () => {
-    if (copiedTimeoutRef.current) {
-      clearTimeout(copiedTimeoutRef.current)
-    }
-
-    copiedTimeoutRef.current = setTimeout(() => {
-      setCopied(false)
-      copiedTimeoutRef.current = null
-    }, 2000)
-  }
+  const { copied, copyToClipboard, downloadDataUrl } = useShareActions({
+    resetDelayMs: 2000,
+    onError: () => setError("Unable to complete share action. Please try again."),
+  })
 
   const handleCopy = async () => {
     setError(null)
@@ -40,13 +24,7 @@ const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessPr
       return
     }
 
-    try {
-      await navigator.clipboard.writeText(createdLink.shortUrl)
-      setCopied(true)
-      resetCopiedAfterDelay()
-    } catch {
-      setError("Unable to copy link to clipboard")
-    }
+    await copyToClipboard(createdLink.shortUrl)
   }
 
   const handleDownload = () => {
@@ -54,10 +32,7 @@ const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessPr
       return
     }
 
-    const a = document.createElement("a")
-    a.href = createdLink.qrCodeDataUrl
-    a.download = `${createdLink.shortCode}-sniprUrl.png`
-    a.click()
+    downloadDataUrl(createdLink.qrCodeDataUrl, `${createdLink.shortCode}-sniprUrl.png`)
   }
   return (
     <div className="mt-3 space-y-2" role="status" aria-live="polite" aria-atomic="true">
