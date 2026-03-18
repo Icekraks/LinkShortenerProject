@@ -26,7 +26,11 @@ const isUniqueViolationError = (error: unknown) => {
   }
 
   const maybePgError = error as { code?: string; constraint?: string }
-  return maybePgError.code === "23505" && maybePgError.constraint === "links_short_code_unique"
+  return (
+    maybePgError.code === "23505" &&
+    (maybePgError.constraint === "links_short_code_unique" ||
+      maybePgError.constraint === "idx_links_short_code_active")
+  )
 }
 
 export async function POST(request: NextRequest) {

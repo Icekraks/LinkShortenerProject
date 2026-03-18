@@ -1,7 +1,9 @@
 WITH deleted AS (
-  DELETE FROM links
+  UPDATE links
+  SET deleted_at = NOW()
   WHERE expires_at IS NOT NULL
     AND expires_at <= NOW()
+    AND deleted_at IS NULL
   RETURNING id
 )
 SELECT COUNT(*) AS deleted_count FROM deleted;
