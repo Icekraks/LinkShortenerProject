@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CreateShortLinkBody
     const originalUrl = body.originalUrl?.trim()
     const expiryHours = body.expiryHours ?? 24
-    const customShortCode = body.customShortCode?.trim()
+    const customShortCodeRaw = body.customShortCode?.trim()
+    const customShortCode = customShortCodeRaw?.toLowerCase()
 
     if (!originalUrl) {
       return NextResponse.json({ error: "Valid URL is required" }, { status: 400 })

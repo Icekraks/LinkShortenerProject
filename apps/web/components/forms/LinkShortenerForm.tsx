@@ -167,8 +167,8 @@ const LinkShortenerForm = () => {
                   return undefined
                 }
 
-                if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
-                  return "Custom short code can only contain letters and numbers"
+                if (!/^[a-z0-9]+$/.test(trimmed)) {
+                  return "Custom short code can only contain lowercase letters and numbers"
                 }
 
                 if (trimmed.length < 4) {
@@ -185,15 +185,19 @@ const LinkShortenerForm = () => {
                   Custom Short Code
                 </Label>
                 <Input
+                  id="custom_short_code"
                   type="text"
                   placeholder="Enter custom short code"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
                   aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={
+                    field.state.meta.errors.length > 0 ? "custom_short_code_error" : undefined
+                  }
                 />
                 {field.state.meta.errors[0] ? (
-                  <p className="mt-2 text-sm text-destructive">
+                  <p id="custom_short_code_error" className="mt-2 text-sm text-destructive">
                     {String(field.state.meta.errors[0])}
                   </p>
                 ) : null}

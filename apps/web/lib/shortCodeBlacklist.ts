@@ -1,3 +1,5 @@
+import "server-only"
+
 const DEFAULT_BLACKLISTED_SHORT_CODES = [
   "admin",
   "api",
