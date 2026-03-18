@@ -13,7 +13,7 @@ type LinkHistoryCardProps = ShortLinkHistoryEntry & {
 }
 
 export const LinkHistoryCard = (entry: LinkHistoryCardProps) => {
-  const { shortUrl, originalUrl, className } = entry
+  const { shortUrl, originalUrl, className = "" } = entry
   const { copied, copyToClipboard, downloadDataUrl } = useShareActions({ resetDelayMs: 1500 })
 
   const handleCopy = async () => {

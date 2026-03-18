@@ -11,7 +11,7 @@ const isSelfDomainTargetMock = vi.fn()
 const encodeLinkIdToShortCodeMock = vi.fn()
 const qrCodeToDataURLMock = vi.fn()
 
-vi.mock("@/lib/db", () => ({
+vi.mock("@lib/db", () => ({
   dbPool: {
     connect: connectMock,
   },
@@ -30,7 +30,7 @@ vi.mock("@/helpers/urlHelpers", () => ({
   isSelfDomainTarget: isSelfDomainTargetMock,
 }))
 
-vi.mock("@/lib/shortCode", () => ({
+vi.mock("@lib/shortCode", () => ({
   encodeLinkIdToShortCode: encodeLinkIdToShortCodeMock,
 }))
 

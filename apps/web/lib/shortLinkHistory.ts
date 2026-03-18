@@ -1,5 +1,4 @@
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
-import Cookies from "js-cookie"
 
 export type ShortLinkHistoryEntry = {
   id: string
@@ -9,11 +8,25 @@ export type ShortLinkHistoryEntry = {
   expiresAt: string | null
 }
 
-const HISTORY_COOKIE_NAME = "shortLinkHistory"
+const HISTORY_STORAGE_KEY = "shortLinkHistory"
 const MAX_HISTORY_ITEMS = 10
+export const SHORT_LINK_HISTORY_UPDATED_EVENT = "short-link-history-updated"
+
+const getStorage = () => {
+  try {
+    if (typeof globalThis === "undefined" || !globalThis.localStorage) {
+      return null
+    }
+
+    return globalThis.localStorage
+  } catch {
+    return null
+  }
+}
 
 export const getShortLinkHistory = () => {
-  const historyJson = Cookies.get(HISTORY_COOKIE_NAME)
+  const storage = getStorage()
+  const historyJson = storage?.getItem(HISTORY_STORAGE_KEY)
 
   if (!historyJson) {
     return [] as ShortLinkHistoryEntry[]
@@ -38,11 +51,22 @@ export const getShortLinkHistory = () => {
         return false
       }
 
+      if (!Object.prototype.hasOwnProperty.call(item, "expiresAt")) {
+        return false
+      }
+
       const expiresAt = (item as { expiresAt?: unknown }).expiresAt
-      if (expiresAt !== null && expiresAt !== undefined) {
-        if (typeof expiresAt !== "string" || new Date(expiresAt) <= new Date()) {
-          return false
-        }
+      if (expiresAt === null) {
+        return true
+      }
+
+      if (typeof expiresAt !== "string") {
+        return false
+      }
+
+      const expiryTimestamp = Date.parse(expiresAt)
+      if (!Number.isFinite(expiryTimestamp) || expiryTimestamp <= Date.now()) {
+        return false
       }
 
       return true
@@ -72,5 +96,15 @@ export const saveShortLinkToHistory = (link: CreateShortLinkSuccessResponse) => 
   )
   const nextHistory = [nextEntry, ...deduped].slice(0, MAX_HISTORY_ITEMS)
 
-  Cookies.set(HISTORY_COOKIE_NAME, JSON.stringify(nextHistory), { expires: 30 })
+  const storage = getStorage()
+
+  if (!storage) {
+    return
+  }
+
+  storage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(nextHistory))
+
+  if (typeof globalThis !== "undefined" && typeof globalThis.dispatchEvent === "function") {
+    globalThis.dispatchEvent(new Event(SHORT_LINK_HISTORY_UPDATED_EVENT))
+  }
 }

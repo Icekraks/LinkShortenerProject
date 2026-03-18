@@ -1,13 +1,32 @@
 "use client"
 
-import { getShortLinkHistory } from "@lib/shortLinkHistory"
-import { useIsMounted } from "@hooks/useIsMounted"
+import { useEffect, useState } from "react"
+import {
+  getShortLinkHistory,
+  SHORT_LINK_HISTORY_UPDATED_EVENT,
+  type ShortLinkHistoryEntry,
+} from "@lib/shortLinkHistory"
 
 import { LinkHistoryCard } from "@components/home/LinkHistory/LinkHistoryCard"
 
 const LinkHistoryList = () => {
-  const isMounted = useIsMounted()
-  const history = isMounted ? getShortLinkHistory() : []
+  const [history, setHistory] = useState<ShortLinkHistoryEntry[]>([])
+
+  useEffect(() => {
+    const syncHistory = () => {
+      setHistory(getShortLinkHistory())
+    }
+
+    syncHistory()
+
+    globalThis.addEventListener(SHORT_LINK_HISTORY_UPDATED_EVENT, syncHistory)
+    globalThis.addEventListener("storage", syncHistory)
+
+    return () => {
+      globalThis.removeEventListener(SHORT_LINK_HISTORY_UPDATED_EVENT, syncHistory)
+      globalThis.removeEventListener("storage", syncHistory)
+    }
+  }, [])
 
   if (history.length === 0) {
     return <p className="text-sm text-gray-500">No history available.</p>

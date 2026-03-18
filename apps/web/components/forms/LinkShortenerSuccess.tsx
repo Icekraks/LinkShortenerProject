@@ -15,7 +15,7 @@ const LinkShortenerSuccess = ({ createdLink, resetForm }: LinkShortenerSuccessPr
   const [error, setError] = useState<string | null>(null)
   const { copied, copyToClipboard, downloadDataUrl } = useShareActions({
     resetDelayMs: 2000,
-    onError: () => setError("Unable to copy link to clipboard"),
+    onError: () => setError("Unable to complete share action. Please try again."),
   })
 
   const handleCopy = async () => {
