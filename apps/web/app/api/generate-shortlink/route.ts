@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { dbPool } from "@/lib/db"
 import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest, isSelfDomainTarget } from "@/helpers/urlHelpers"
+import { QR_CODE_OPTIONS } from "@/lib/qrCode"
 import { encodeLinkIdToShortCode } from "@/lib/shortCode"
 import {
   ALLOCATE_NEXT_LINK_ID_QUERY,
@@ -15,12 +16,6 @@ import QRCode from "qrcode"
 export const runtime = "nodejs"
 
 const ALLOWED_EXPIRY_HOURS = new Set([1, 4, 6, 12, 24])
-const QR_CODE_OPTIONS = {
-  errorCorrectionLevel: "H",
-  type: "image/png",
-  width: 512,
-  margin: 1,
-} as const
 
 export async function POST(request: NextRequest) {
   try {
