@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { dbPool } from "@/lib/db"
 import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest, isSelfDomainTarget } from "@/helpers/urlHelpers"
+import { isBlacklistedShortCode } from "@/lib/shortCodeBlacklist"
 import { encodeLinkIdToShortCode } from "@/lib/shortCode"
 import {
   ALLOCATE_NEXT_LINK_ID_QUERY,
@@ -21,6 +22,17 @@ const QR_CODE_OPTIONS = {
   width: 512,
   margin: 1,
 } as const
+
+const CUSTOM_SHORT_CODE_PATTERN = /^[a-z0-9]{4,}$/
+
+const isUniqueViolationError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const maybePgError = error as { code?: string; constraint?: string }
+  return maybePgError.code === "23505" && maybePgError.constraint === "links_short_code_unique"
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,9 +60,28 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CreateShortLinkBody
     const originalUrl = body.originalUrl?.trim()
     const expiryHours = body.expiryHours ?? 24
+    const customShortCodeRaw = body.customShortCode?.trim()
+    const customShortCode = customShortCodeRaw?.toLowerCase()
 
     if (!originalUrl) {
       return NextResponse.json({ error: "Valid URL is required" }, { status: 400 })
+    }
+
+    if (customShortCode && !CUSTOM_SHORT_CODE_PATTERN.test(customShortCode)) {
+      return NextResponse.json(
+        {
+          error:
+            "Custom short code must be at least 4 characters long and contain only lowercase letters and numbers",
+        },
+        { status: 400 },
+      )
+    }
+
+    if (customShortCode && isBlacklistedShortCode(customShortCode)) {
+      return NextResponse.json(
+        { error: "This custom short code is reserved. Please choose a different one." },
+        { status: 400 },
+      )
     }
 
     if (!Number.isInteger(expiryHours) || !ALLOWED_EXPIRY_HOURS.has(expiryHours)) {
@@ -101,7 +132,7 @@ export async function POST(request: NextRequest) {
         throw new Error("Failed to allocate a valid link id")
       }
 
-      const shortCode = encodeLinkIdToShortCode(idValue)
+      const shortCode = customShortCode || encodeLinkIdToShortCode(idValue)
 
       const insertResult = await client.query<{
         id: number
@@ -155,6 +186,10 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     )
   } catch (error) {
+    if (isUniqueViolationError(error)) {
+      return NextResponse.json({ error: "Short code already exists" }, { status: 409 })
+    }
+
     console.error("Failed to create short link", error)
     return NextResponse.json({ error: "Failed to create short link" }, { status: 500 })
   }
