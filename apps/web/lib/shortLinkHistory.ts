@@ -2,7 +2,7 @@ import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
 import Cookies from "js-cookie"
 
 export type ShortLinkHistoryEntry = {
-  id: number
+  id: string
   shortCode: string
   shortUrl: string
   originalUrl: string
@@ -58,7 +58,7 @@ export const saveShortLinkToHistory = (link: CreateShortLinkSuccessResponse) => 
   const existing = getShortLinkHistory()
 
   const nextEntry: ShortLinkHistoryEntry = {
-    id: link.id,
+    id: String(link.id),
     shortCode: link.shortCode,
     shortUrl: link.shortUrl,
     originalUrl: link.originalUrl,
