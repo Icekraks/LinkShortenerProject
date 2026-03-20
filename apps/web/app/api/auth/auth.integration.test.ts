@@ -23,7 +23,7 @@ describeIfIntegration("Auth integration", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = integrationDatabaseUrl
 
-    const schemaFilePath = path.resolve(__dirname, "../../db/schema.sql")
+    const schemaFilePath = path.resolve(__dirname, "../../../../db/schema.sql")
     const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
 
     pool = new Pool({ connectionString: integrationDatabaseUrl })
