@@ -1,4 +1,5 @@
 import { Button } from "@ui/button"
+import { CircleUser } from "lucide-react"
 import Link from "next/link"
 
 const Links = [
@@ -38,6 +39,21 @@ const DesktopNavigation = () => {
             </Button>
           </li>
         ))}
+        <li>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={
+              <Link
+                href="/account/login"
+                className="text-sm text-muted-foreground hover:text-foreground"
+                aria-label="Login to your account"
+              />
+            }
+          >
+            <CircleUser className="w-5 h-5 mr-1" aria-hidden="true" />
+          </Button>
+        </li>
       </ul>
     </nav>
   )

@@ -2,6 +2,7 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
+  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -66,6 +67,34 @@ const MobileNavigation = () => {
               ))}
             </ul>
           </ScrollArea>
+          <DrawerFooter className="flex flex-row justify-end gap-x-4">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link
+                  href="/account/register"
+                  className="flex flex-1 text-sm text-muted-foreground hover:text-foreground"
+                  aria-label="Sign up for an account"
+                />
+              }
+            >
+              Sign Up
+            </Button>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link
+                  href="/account/login"
+                  className="flex flex-1 text-sm text-muted-foreground hover:text-foreground"
+                  aria-label="Login to your account"
+                />
+              }
+            >
+              Login
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </nav>
