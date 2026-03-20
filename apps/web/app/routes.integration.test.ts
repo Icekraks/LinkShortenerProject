@@ -34,7 +34,17 @@ describeIfIntegration("Route integration", () => {
     const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
 
     pool = new Pool({ connectionString: integrationDatabaseUrl })
-    await pool.query(schemaSql)
+
+    // Try to load schema, but ignore errors if tables/types already exist
+    // (they may have been created by other integration test suites)
+    try {
+      await pool.query(schemaSql)
+    } catch (error: any) {
+      // Ignore "already exists" type errors - other test suites may have created the schema
+      if (!error.message?.includes("already exists") && !error.message?.includes("duplicate key")) {
+        throw error
+      }
+    }
   })
 
   beforeEach(async () => {
@@ -42,7 +52,8 @@ describeIfIntegration("Route integration", () => {
       throw new Error("Integration pool was not initialized")
     }
 
-    await pool.query("TRUNCATE TABLE rate_limit_events, links RESTART IDENTITY")
+    // Note: RESTART IDENTITY comes before CASCADE in PostgreSQL syntax
+    await pool.query("TRUNCATE TABLE rate_limit_events, links RESTART IDENTITY CASCADE")
     vi.resetModules()
   })
 

@@ -98,8 +98,9 @@ describeIfIntegration("Auth integration", () => {
     }
 
     // Truncate all auth tables with CASCADE to handle foreign keys
+    // Note: RESTART IDENTITY comes before CASCADE in PostgreSQL syntax
     await pool.query(
-      "TRUNCATE TABLE auth_verification_tokens, accounts, sessions, user_credentials, users CASCADE RESTART IDENTITY",
+      "TRUNCATE TABLE auth_verification_tokens, accounts, sessions, user_credentials, users RESTART IDENTITY CASCADE",
     )
     vi.resetModules()
   })
