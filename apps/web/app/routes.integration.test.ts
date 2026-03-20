@@ -39,9 +39,14 @@ describeIfIntegration("Route integration", () => {
     // (they may have been created by other integration test suites)
     try {
       await pool.query(schemaSql)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Ignore "already exists" type errors - other test suites may have created the schema
-      if (!error.message?.includes("already exists") && !error.message?.includes("duplicate key")) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("already exists") || error.message.includes("duplicate key"))
+      ) {
+        // Ignore this error
+      } else {
         throw error
       }
     }

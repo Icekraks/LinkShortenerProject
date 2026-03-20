@@ -1,3 +1,6 @@
+import fs from "node:fs"
+import path from "node:path"
+
 import { NextRequest } from "next/server"
 import { Pool } from "pg"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
@@ -20,76 +23,26 @@ describeIfIntegration("Auth integration", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = integrationDatabaseUrl
 
+    const schemaFilePath = path.resolve(__dirname, "../../db/schema.sql")
+    const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
+
     pool = new Pool({ connectionString: integrationDatabaseUrl })
 
-    // Create extensions
-    await pool.query(`
-      CREATE EXTENSION IF NOT EXISTS pgcrypto;
-      CREATE EXTENSION IF NOT EXISTS citext;
-    `)
-
-    // Create auth tables
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        email CITEXT NOT NULL UNIQUE,
-        email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT users_email_format CHECK (position('@' in email::TEXT) > 1)
-      );
-
-      CREATE TABLE IF NOT EXISTS user_credentials (
-        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-        password_hash TEXT NOT NULL,
-        password_algorithm TEXT NOT NULL DEFAULT 'argon2id',
-        password_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS accounts (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        provider TEXT NOT NULL,
-        provider_user_id TEXT NOT NULL,
-        provider_email CITEXT,
-        provider_email_verified BOOLEAN,
-        access_token TEXT,
-        refresh_token TEXT,
-        token_expires_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        UNIQUE (provider, provider_user_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts (user_id);
-
-      CREATE TABLE IF NOT EXISTS sessions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        session_token TEXT NOT NULL UNIQUE,
-        expires_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
-      CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
-
-      CREATE TABLE IF NOT EXISTS auth_verification_tokens (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        email CITEXT NOT NULL,
-        token_hash TEXT NOT NULL UNIQUE,
-        purpose TEXT NOT NULL CHECK (purpose IN ('email_verify', 'password_reset')),
-        expires_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        consumed_at TIMESTAMPTZ
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_auth_verification_tokens_email_purpose
-        ON auth_verification_tokens (lower(email::TEXT), purpose);
-    `)
+    // Try to load schema, but ignore errors if tables/types already exist
+    // (they may have been created by other integration test suites)
+    try {
+      await pool.query(schemaSql)
+    } catch (error: unknown) {
+      // Ignore "already exists" type errors - other test suites may have created the schema
+      if (
+        error instanceof Error &&
+        (error.message.includes("already exists") || error.message.includes("duplicate key"))
+      ) {
+        // Ignore this error
+      } else {
+        throw error
+      }
+    }
   })
 
   beforeEach(async () => {
@@ -97,10 +50,10 @@ describeIfIntegration("Auth integration", () => {
       throw new Error("Integration pool was not initialized")
     }
 
-    // Truncate all auth tables with CASCADE to handle foreign keys
+    // Truncate all tables with CASCADE to handle foreign keys
     // Note: RESTART IDENTITY comes before CASCADE in PostgreSQL syntax
     await pool.query(
-      "TRUNCATE TABLE auth_verification_tokens, accounts, sessions, user_credentials, users RESTART IDENTITY CASCADE",
+      "TRUNCATE TABLE rate_limit_events, links, auth_verification_tokens, accounts, sessions, user_credentials, users RESTART IDENTITY CASCADE",
     )
     vi.resetModules()
   })
