@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT users_email_format CHECK (position('@' in email) > 1)
+  CONSTRAINT users_email_format CHECK (position('@' in email::TEXT) > 1)
 );
 
 CREATE TABLE IF NOT EXISTS user_credentials (

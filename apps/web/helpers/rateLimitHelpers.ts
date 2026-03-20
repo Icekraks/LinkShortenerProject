@@ -2,7 +2,7 @@ import "server-only"
 import type { NextRequest } from "next/server"
 
 import { dbPool } from "@/lib/db"
-import { CREATE_LINK_RATE_LIMIT_CHECK_QUERY } from "@/sql/rateLimitCheck"
+import { RATE_LIMIT_CHECK_QUERY } from "@/sql/rateLimitCheck"
 
 export const CREATE_LINK_RATE_LIMIT = {
   maxRequests: 10,
@@ -49,7 +49,7 @@ const getClientIdentifier = (request: NextRequest) => {
 export const isCreateLinkRateLimited = async (request: NextRequest) => {
   const identifier = getClientIdentifier(request)
 
-  const result = await dbPool.query<{ request_count: number }>(CREATE_LINK_RATE_LIMIT_CHECK_QUERY, [
+  const result = await dbPool.query<{ request_count: number }>(RATE_LIMIT_CHECK_QUERY, [
     CREATE_LINK_ENDPOINT,
     identifier,
     CREATE_LINK_RATE_LIMIT.windowSeconds,
@@ -62,7 +62,7 @@ export const isCreateLinkRateLimited = async (request: NextRequest) => {
 export const isResolveLinkRateLimited = async (request: NextRequest) => {
   const identifier = getClientIdentifier(request)
 
-  const result = await dbPool.query<{ request_count: number }>(CREATE_LINK_RATE_LIMIT_CHECK_QUERY, [
+  const result = await dbPool.query<{ request_count: number }>(RATE_LIMIT_CHECK_QUERY, [
     RESOLVE_LINK_ENDPOINT,
     identifier,
     RESOLVE_LINK_RATE_LIMIT.windowSeconds,
@@ -75,7 +75,7 @@ export const isResolveLinkRateLimited = async (request: NextRequest) => {
 export const isLoginRateLimited = async (request: NextRequest) => {
   const identifier = getClientIdentifier(request)
 
-  const result = await dbPool.query<{ request_count: number }>(CREATE_LINK_RATE_LIMIT_CHECK_QUERY, [
+  const result = await dbPool.query<{ request_count: number }>(RATE_LIMIT_CHECK_QUERY, [
     LOGIN_ENDPOINT,
     identifier,
     LOGIN_RATE_LIMIT.windowSeconds,
@@ -88,7 +88,7 @@ export const isLoginRateLimited = async (request: NextRequest) => {
 export const isRegisterRateLimited = async (request: NextRequest) => {
   const identifier = getClientIdentifier(request)
 
-  const result = await dbPool.query<{ request_count: number }>(CREATE_LINK_RATE_LIMIT_CHECK_QUERY, [
+  const result = await dbPool.query<{ request_count: number }>(RATE_LIMIT_CHECK_QUERY, [
     REGISTER_ENDPOINT,
     identifier,
     REGISTER_RATE_LIMIT.windowSeconds,

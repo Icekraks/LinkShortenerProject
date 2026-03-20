@@ -1,4 +1,4 @@
-export const CREATE_LINK_RATE_LIMIT_CHECK_QUERY = `
+export const RATE_LIMIT_CHECK_QUERY = `
       WITH inserted AS (
         INSERT INTO rate_limit_events (endpoint, identifier)
         VALUES ($1, $2)
