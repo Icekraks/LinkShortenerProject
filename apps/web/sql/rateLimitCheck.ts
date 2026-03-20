@@ -2,6 +2,7 @@ export const RATE_LIMIT_CHECK_QUERY = `
       WITH inserted AS (
         INSERT INTO rate_limit_events (endpoint, identifier)
         VALUES ($1, $2)
+        RETURNING 1
       )
       SELECT COUNT(*)::int AS request_count
       FROM rate_limit_events
