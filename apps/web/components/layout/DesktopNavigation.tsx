@@ -51,7 +51,7 @@ const DesktopNavigation = () => {
               />
             }
           >
-            <CircleUser className="w-5 h-5 mr-1" aria-hidden="true" />
+            <CircleUser className="w-5 h-5" aria-hidden="true" />
           </Button>
         </li>
       </ul>
