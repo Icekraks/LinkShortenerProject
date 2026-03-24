@@ -113,6 +113,7 @@ const RegisterForm = () => {
                 <Button
                   size="icon"
                   variant="ghost"
+                  type="button"
                   onClick={() => setViewPassword((prev) => ({ ...prev, password: !prev.password }))}
                 >
                   {viewPassword.password ? <EyeOff /> : <Eye />}
@@ -157,6 +158,7 @@ const RegisterForm = () => {
                 <Button
                   size="icon"
                   variant="ghost"
+                  type="button"
                   onClick={() =>
                     setViewPassword((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))
                   }
