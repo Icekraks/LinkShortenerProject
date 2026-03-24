@@ -6,7 +6,7 @@ import { Input } from "@ui/input"
 import { Label } from "@ui/label"
 import SSOForm from "@components/forms/SSOForm"
 import { useRouter } from "next/navigation"
-import ForgotPasswordForm from "@components/forms/ForgotPasswordForm"
+// import ForgotPasswordForm from "@components/forms/ForgotPasswordForm"
 
 const LoginForm = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
