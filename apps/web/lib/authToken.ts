@@ -3,17 +3,12 @@ import "server-only"
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 const SESSION_TOKEN_VERSION = "v1"
-const DEV_FALLBACK_SESSION_SECRET = "dev-insecure-auth-session-secret-change-me"
 
 const getSessionSecret = () => {
   const envSecret = process.env.AUTH_SESSION_SECRET?.trim()
 
   if (envSecret) {
     return envSecret
-  }
-
-  if (process.env.NODE_ENV !== "production") {
-    return DEV_FALLBACK_SESSION_SECRET
   }
 
   throw new Error("AUTH_SESSION_SECRET is required in production")

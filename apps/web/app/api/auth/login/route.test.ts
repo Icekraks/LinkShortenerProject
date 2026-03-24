@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 import { randomBytes, scrypt as scryptCallback } from "node:crypto"
 import { promisify } from "node:util"
@@ -55,13 +55,24 @@ const makeRequest = (body: unknown) =>
 
 describe("POST /api/auth/login", () => {
   let validPasswordHash: string
+  const originalAuthSessionSecret = process.env.AUTH_SESSION_SECRET
 
   beforeAll(async () => {
     validPasswordHash = await hashPasswordForTest("Password123")
   })
 
+  afterAll(() => {
+    if (originalAuthSessionSecret === undefined) {
+      delete process.env.AUTH_SESSION_SECRET
+      return
+    }
+
+    process.env.AUTH_SESSION_SECRET = originalAuthSessionSecret
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.AUTH_SESSION_SECRET = "test-auth-session-secret"
     connectMock.mockResolvedValue({ query: queryMock, release: releaseMock })
     isSameOriginRequestMock.mockReturnValue(true)
     isLoginRateLimitedMock.mockResolvedValue(false)
