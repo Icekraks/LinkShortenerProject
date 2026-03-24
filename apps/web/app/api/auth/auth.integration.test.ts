@@ -100,6 +100,9 @@ describeIfIntegration("Auth integration", () => {
       expect(userResult.rows).toHaveLength(1)
       expect(userResult.rows[0].email).toBe("user@example.com")
 
+      // Mark user verified so login can proceed.
+      await pool.query(`UPDATE users SET email_verified = TRUE WHERE id = $1`, [userId])
+
       // Now login with same credentials
       vi.resetModules()
       const { POST: loginPOST } = await import("./login/route")
@@ -182,6 +185,53 @@ describeIfIntegration("Auth integration", () => {
       expect(loginBody.error).toBe("Invalid email or password")
 
       // Verify no session was created
+      const sessionResult = await pool.query("SELECT * FROM sessions")
+      expect(sessionResult.rows).toHaveLength(0)
+    })
+
+    it("blocks login until email is verified", async () => {
+      if (!pool) {
+        throw new Error("Integration pool was not initialized")
+      }
+
+      const { POST: registerPOST } = await import("./register/route")
+
+      const registerRequest = new NextRequest("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "user@example.com",
+          password: "TestPassword123",
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          origin: "http://localhost:3000",
+        },
+      })
+
+      await registerPOST(registerRequest)
+
+      vi.resetModules()
+      const { POST: loginPOST } = await import("./login/route")
+
+      const loginRequest = new NextRequest("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "user@example.com",
+          password: "TestPassword123",
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          origin: "http://localhost:3000",
+        },
+      })
+
+      const loginResponse = await loginPOST(loginRequest)
+      const loginBody = await loginResponse.json()
+
+      expect(loginResponse.status).toBe(403)
+      expect(loginBody.error).toBe("Please verify your email before logging in")
+      expect(loginBody.code).toBe("EMAIL_NOT_VERIFIED")
+
       const sessionResult = await pool.query("SELECT * FROM sessions")
       expect(sessionResult.rows).toHaveLength(0)
     })
@@ -289,6 +339,8 @@ describeIfIntegration("Auth integration", () => {
       })
 
       await registerPOST(registerRequest)
+
+      await pool.query(`UPDATE users SET email_verified = TRUE WHERE email = $1`, ["user@example.com"])
 
       vi.resetModules()
       const { POST: loginPOST } = await import("./login/route")

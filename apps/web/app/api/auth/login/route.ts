@@ -6,6 +6,8 @@ import { promisify } from "node:util"
 import { dbPool } from "@/lib/db"
 import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
+import { createEmailVerificationToken } from "@/lib/authVerification"
+import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
 
 export const runtime = "nodejs"
 
@@ -14,6 +16,7 @@ const scryptAsync = promisify(scryptCallback)
 const PASSWORD_HASH_KEY_LENGTH = 64
 const SESSION_TTL_DAYS = 30
 const AUTH_SESSION_COOKIE_NAME = "link_shortener_session"
+const EMAIL_VERIFICATION_TTL_MINUTES = 60 * 24
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 
@@ -95,6 +98,22 @@ const verifyPassword = async (password: string, passwordHash: string, algorithm:
   return timingSafeEqual(derivedKey, parsedHash.expectedKey)
 }
 
+const buildVerificationUrl = (request: NextRequest, token: string) => {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
+
+  try {
+    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
+    baseUrl.pathname = "/api/auth/verify-email"
+    baseUrl.searchParams.set("token", token)
+    return baseUrl.toString()
+  } catch {
+    const fallbackUrl = new URL(request.nextUrl.origin)
+    fallbackUrl.pathname = "/api/auth/verify-email"
+    fallbackUrl.searchParams.set("token", token)
+    return fallbackUrl.toString()
+  }
+}
+
 const buildSessionExpiry = () => {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_TTL_DAYS)
@@ -162,6 +181,44 @@ export async function POST(request: NextRequest) {
 
       if (!passwordMatches) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+      }
+
+      if (!credential.email_verified) {
+        const pendingTokenResult = await client.query<{ id: string }>(
+          `SELECT id FROM auth_verification_tokens
+           WHERE user_id = $1
+             AND purpose = 'email_verify'
+             AND consumed_at IS NULL
+             AND expires_at > NOW()
+           LIMIT 1`,
+          [credential.id],
+        )
+
+        let verificationEmailSent = false
+
+        if (!pendingTokenResult.rows[0]) {
+          const token = await createEmailVerificationToken(client, {
+            userId: credential.id,
+            email: credential.email,
+            ttlMinutes: EMAIL_VERIFICATION_TTL_MINUTES,
+          })
+
+          const verificationUrl = buildVerificationUrl(request, token)
+          const emailResult = await sendEmailVerificationEmail({
+            to: credential.email,
+            verificationUrl,
+          })
+          verificationEmailSent = emailResult.sent
+        }
+
+        return NextResponse.json(
+          {
+            error: "Please verify your email before logging in",
+            code: "EMAIL_NOT_VERIFIED",
+            verificationEmailSent,
+          },
+          { status: 403 },
+        )
       }
 
       const sessionToken = randomBytes(32).toString("hex")

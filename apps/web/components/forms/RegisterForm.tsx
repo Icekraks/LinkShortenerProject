@@ -8,6 +8,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group"
 
 const RegisterForm = () => {
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [viewPassword, setViewPassword] = useState({
     password: false,
@@ -46,11 +47,13 @@ const RegisterForm = () => {
         }
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : "An unknown error occurred")
+      } finally {
+        setIsSubmitted(true)
       }
     },
   })
 
-  return (
+  return !isSubmitted ? (
     <form
       className="flex w-full flex-col items-center gap-4"
       onSubmit={(e) => {
@@ -183,6 +186,17 @@ const RegisterForm = () => {
         </p>
       ) : null}
     </form>
+  ) : (
+    <div className="flex w-full flex-col items-center gap-4 text-center">
+      <h2 className="text-lg font-semibold">Registration successful!</h2>
+      <p className="text-center text-muted-foreground">
+        Please check your email for a verification link before logging in.
+      </p>
+      <p>
+        If you don&apos;t receive an email within a few minutes, please check your spam folder or
+        try logging in to resend the verification email.
+      </p>
+    </div>
   )
 }
 

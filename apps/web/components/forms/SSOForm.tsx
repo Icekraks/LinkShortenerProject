@@ -1,5 +1,5 @@
 const SSOForm = () => {
-  return <div>SSO coming soon.</div>
+  return <div className="py-4">SSO coming soon.</div>
 }
 
 export default SSOForm

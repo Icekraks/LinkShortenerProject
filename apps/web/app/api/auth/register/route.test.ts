@@ -6,6 +6,8 @@ const releaseMock = vi.fn()
 const connectMock = vi.fn()
 const isRegisterRateLimitedMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
+const createEmailVerificationTokenMock = vi.fn()
+const sendEmailVerificationEmailMock = vi.fn()
 
 vi.mock("@lib/db", () => ({
   dbPool: {
@@ -25,6 +27,14 @@ vi.mock("@/helpers/urlHelpers", () => ({
   isSameOriginRequest: isSameOriginRequestMock,
 }))
 
+vi.mock("@/lib/authVerification", () => ({
+  createEmailVerificationToken: createEmailVerificationTokenMock,
+}))
+
+vi.mock("@/lib/transactionalEmail", () => ({
+  sendEmailVerificationEmail: sendEmailVerificationEmailMock,
+}))
+
 const makeRequest = (body: unknown) =>
   new NextRequest("http://localhost:3000/api/auth/register", {
     method: "POST",
@@ -38,6 +48,8 @@ describe("POST /api/auth/register", () => {
     connectMock.mockResolvedValue({ query: queryMock, release: releaseMock })
     isSameOriginRequestMock.mockReturnValue(true)
     isRegisterRateLimitedMock.mockResolvedValue(false)
+    createEmailVerificationTokenMock.mockResolvedValue("verification-token")
+    sendEmailVerificationEmailMock.mockResolvedValue({ sent: true, skipped: false })
     queryMock.mockResolvedValue({ rows: [] })
   })
 
@@ -145,8 +157,11 @@ describe("POST /api/auth/register", () => {
     expect(body.user.id).toBe("new-user-id")
     expect(body.user.email).toBe("user@example.com")
     expect(body.user.emailVerified).toBe(false)
+    expect(body.verificationEmailSent).toBe(true)
     expect(queryMock).toHaveBeenCalledWith("BEGIN")
     expect(queryMock).toHaveBeenCalledWith("COMMIT")
+    expect(createEmailVerificationTokenMock).toHaveBeenCalledOnce()
+    expect(sendEmailVerificationEmailMock).toHaveBeenCalledOnce()
     expect(releaseMock).toHaveBeenCalledOnce()
   })
 

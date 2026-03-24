@@ -6,6 +6,8 @@ import { promisify } from "node:util"
 import { dbPool } from "@/lib/db"
 import { isRegisterRateLimited, REGISTER_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
+import { createEmailVerificationToken } from "@/lib/authVerification"
+import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
 
 export const runtime = "nodejs"
 
@@ -13,6 +15,7 @@ const scryptAsync = promisify(scryptCallback)
 
 const MIN_PASSWORD_LENGTH = 8
 const PASSWORD_HASH_KEY_LENGTH = 64
+const EMAIL_VERIFICATION_TTL_MINUTES = 60 * 24
 
 const isUniqueViolationError = (error: unknown) => {
   if (!error || typeof error !== "object") {
@@ -50,6 +53,22 @@ const hashPassword = async (password: string) => {
   const key = (await scryptAsync(password, salt, PASSWORD_HASH_KEY_LENGTH)) as Buffer
 
   return `scrypt$${salt.toString("hex")}$${key.toString("hex")}`
+}
+
+const buildVerificationUrl = (request: NextRequest, token: string) => {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
+
+  try {
+    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
+    baseUrl.pathname = "/api/auth/verify-email"
+    baseUrl.searchParams.set("token", token)
+    return baseUrl.toString()
+  } catch {
+    const fallbackUrl = new URL(request.nextUrl.origin)
+    fallbackUrl.pathname = "/api/auth/verify-email"
+    fallbackUrl.searchParams.set("token", token)
+    return fallbackUrl.toString()
+  }
 }
 
 const parseAndValidateBody = async (request: NextRequest) => {
@@ -120,6 +139,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = parsed
     const passwordHash = await hashPassword(password)
+    let verificationToken: string | null = null
 
     const client = await dbPool.connect()
 
@@ -149,11 +169,29 @@ export async function POST(request: NextRequest) {
         [createdUser.id, passwordHash],
       )
 
+      verificationToken = await createEmailVerificationToken(client, {
+        userId: createdUser.id,
+        email: createdUser.email,
+        ttlMinutes: EMAIL_VERIFICATION_TTL_MINUTES,
+      })
+
       await client.query("COMMIT")
+
+      const verificationUrl = verificationToken
+        ? buildVerificationUrl(request, verificationToken)
+        : null
+
+      const emailResult = verificationUrl
+        ? await sendEmailVerificationEmail({
+            to: createdUser.email,
+            verificationUrl,
+          })
+        : { sent: false, skipped: true }
 
       return NextResponse.json(
         {
           ok: true,
+          verificationEmailSent: emailResult.sent,
           user: {
             id: createdUser.id,
             email: createdUser.email,
