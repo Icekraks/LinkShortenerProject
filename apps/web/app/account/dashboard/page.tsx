@@ -1,6 +1,15 @@
-import LogoutButton from "@/components/buttons/LogoutButton"
+import { redirect } from "next/navigation"
 
-export default function AccountDashboard() {
+import LogoutButton from "@/components/buttons/LogoutButton"
+import { hasActiveSession } from "@/lib/authSession"
+
+export default async function AccountDashboard() {
+  const isLoggedIn = await hasActiveSession()
+
+  if (!isLoggedIn) {
+    redirect("/account/login")
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center font-sans">
       <aside className="min-h-screen">
