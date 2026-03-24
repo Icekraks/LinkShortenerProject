@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-import { dbPool } from "@/lib/db"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
+import { AUTH_SESSION_COOKIE_NAME } from "@/lib/authSession"
 
 export const runtime = "nodejs"
-
-const AUTH_SESSION_COOKIE_NAME = "link_shortener_session"
 
 export async function POST(request: NextRequest) {
   try {
     if (!isSameOriginRequest(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const sessionToken = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value
-
-    if (sessionToken) {
-      await dbPool.query(`DELETE FROM sessions WHERE session_token = $1`, [sessionToken])
     }
 
     const response = NextResponse.json({ ok: true }, { status: 200 })

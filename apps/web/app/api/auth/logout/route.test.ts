@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-const queryMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
-
-vi.mock("@lib/db", () => ({
-  dbPool: {
-    query: queryMock,
-  },
-}))
 
 vi.mock("@/helpers/urlHelpers", () => ({
   isSameOriginRequest: isSameOriginRequestMock,
@@ -33,7 +26,6 @@ describe("POST /api/auth/logout", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     isSameOriginRequestMock.mockReturnValue(true)
-    queryMock.mockResolvedValue({ rows: [] })
   })
 
   it("returns 403 when request is cross-origin", async () => {
@@ -45,19 +37,15 @@ describe("POST /api/auth/logout", () => {
 
     expect(response.status).toBe(403)
     expect(body.error).toBe("Forbidden")
-    expect(queryMock).not.toHaveBeenCalled()
   })
 
-  it("deletes session from DB and clears cookie when session token is present", async () => {
+  it("clears cookie when session token is present", async () => {
     const { POST } = await import("./route")
     const response = await POST(makeRequest({ link_shortener_session: "abc123token" }))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.ok).toBe(true)
-    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM sessions"), [
-      "abc123token",
-    ])
     expect(response.headers.get("set-cookie")).toMatch(/link_shortener_session=/)
     expect(response.headers.get("set-cookie")).toMatch(/Max-Age=0/i)
   })
@@ -69,19 +57,16 @@ describe("POST /api/auth/logout", () => {
 
     expect(response.status).toBe(200)
     expect(body.ok).toBe(true)
-    expect(queryMock).not.toHaveBeenCalled()
     expect(response.headers.get("set-cookie")).toMatch(/link_shortener_session=/)
     expect(response.headers.get("set-cookie")).toMatch(/Max-Age=0/i)
   })
 
-  it("returns 500 on unexpected DB error", async () => {
-    queryMock.mockRejectedValueOnce(new Error("DB connection failed"))
-
+  it("returns 200 when called repeatedly", async () => {
     const { POST } = await import("./route")
-    const response = await POST(makeRequest({ link_shortener_session: "abc123token" }))
-    const body = await response.json()
+    const firstResponse = await POST(makeRequest({ link_shortener_session: "abc123token" }))
+    const secondResponse = await POST(makeRequest())
 
-    expect(response.status).toBe(500)
-    expect(body.error).toBe("Failed to logout user")
+    expect(firstResponse.status).toBe(200)
+    expect(secondResponse.status).toBe(200)
   })
 })

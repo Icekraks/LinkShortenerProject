@@ -127,13 +127,6 @@ describeIfIntegration("Auth integration", () => {
       expect(loginBody.user.id).toBe(userId)
       expect(loginBody.user.email).toBe("user@example.com")
 
-      // Check that session was created
-      const sessionResult = await pool.query("SELECT * FROM sessions WHERE user_id = $1", [userId])
-      expect(sessionResult.rows).toHaveLength(1)
-      const createdSession = sessionResult.rows[0]
-      expect(createdSession.session_token).toBeTruthy()
-      expect(createdSession.expires_at).toBeTruthy()
-
       // Check cookie was set
       const setCookie = loginResponse.headers.get("set-cookie")
       expect(setCookie).toMatch(/link_shortener_session=/)
@@ -183,10 +176,6 @@ describeIfIntegration("Auth integration", () => {
 
       expect(loginResponse.status).toBe(401)
       expect(loginBody.error).toBe("Invalid email or password")
-
-      // Verify no session was created
-      const sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(0)
     })
 
     it("blocks login until email is verified", async () => {
@@ -231,9 +220,6 @@ describeIfIntegration("Auth integration", () => {
       expect(loginResponse.status).toBe(403)
       expect(loginBody.error).toBe("Please verify your email before logging in")
       expect(loginBody.code).toBe("EMAIL_NOT_VERIFIED")
-
-      const sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(0)
     })
 
     it("rejects registration with weak password", async () => {
@@ -340,7 +326,9 @@ describeIfIntegration("Auth integration", () => {
 
       await registerPOST(registerRequest)
 
-      await pool.query(`UPDATE users SET email_verified = TRUE WHERE email = $1`, ["user@example.com"])
+      await pool.query(`UPDATE users SET email_verified = TRUE WHERE email = $1`, [
+        "user@example.com",
+      ])
 
       vi.resetModules()
       const { POST: loginPOST } = await import("./login/route")
@@ -364,10 +352,6 @@ describeIfIntegration("Auth integration", () => {
 
       expect(sessionToken).toBeTruthy()
 
-      // Verify session exists
-      let sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(1)
-
       // Now logout with the session cookie
       vi.resetModules()
       const { POST: logoutPOST } = await import("./logout/route")
@@ -385,10 +369,6 @@ describeIfIntegration("Auth integration", () => {
 
       expect(logoutResponse.status).toBe(200)
       expect(logoutBody.ok).toBe(true)
-
-      // Verify session was deleted
-      sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(0)
 
       // Check cookie was cleared
       const setCookie = logoutResponse.headers.get("set-cookie")
