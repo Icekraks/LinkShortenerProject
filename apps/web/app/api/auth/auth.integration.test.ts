@@ -19,9 +19,11 @@ const describeIfIntegration = integrationDatabaseUrl ? describe : describe.skip
 
 describeIfIntegration("Auth integration", () => {
   let pool: Pool | undefined
+  const originalAuthSessionSecret = process.env.AUTH_SESSION_SECRET
 
   beforeAll(async () => {
     process.env.DATABASE_URL = integrationDatabaseUrl
+    process.env.AUTH_SESSION_SECRET = process.env.AUTH_SESSION_SECRET ?? "integration-auth-secret"
 
     const schemaFilePath = path.resolve(__dirname, "../../../../db/schema.sql")
     const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
@@ -53,12 +55,18 @@ describeIfIntegration("Auth integration", () => {
     // Truncate all tables with CASCADE to handle foreign keys
     // Note: RESTART IDENTITY comes before CASCADE in PostgreSQL syntax
     await pool.query(
-      "TRUNCATE TABLE rate_limit_events, links, auth_verification_tokens, accounts, sessions, user_credentials, users RESTART IDENTITY CASCADE",
+      "TRUNCATE TABLE rate_limit_events, links, auth_verification_tokens, accounts, user_credentials, users RESTART IDENTITY CASCADE",
     )
     vi.resetModules()
   })
 
   afterAll(async () => {
+    if (originalAuthSessionSecret === undefined) {
+      delete process.env.AUTH_SESSION_SECRET
+    } else {
+      process.env.AUTH_SESSION_SECRET = originalAuthSessionSecret
+    }
+
     if (pool) {
       await pool.end()
     }
