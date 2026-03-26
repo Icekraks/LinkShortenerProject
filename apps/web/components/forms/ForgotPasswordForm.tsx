@@ -1,3 +1,4 @@
+"use client"
 import { Dialog, DialogTrigger, DialogContent } from "@ui/dialog"
 import { Button } from "@ui/button"
 import { useForm } from "@tanstack/react-form-nextjs"

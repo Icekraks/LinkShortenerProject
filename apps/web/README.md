@@ -15,6 +15,7 @@ Set these in root `.env` / `.env.local` or `apps/web/.env.local`:
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=verify-full
 HASHIDS_SALT=replace-with-a-long-random-secret
+AUTH_SESSION_SECRET=replace-with-a-long-random-secret
 SHORT_CODE_BLACKLIST=admin,api,www,root,support,help
 RESEND_API_KEY=re_xxxxxxxxx
 RESEND_FROM_EMAIL=Link Shortener <noreply@yourdomain.com>
@@ -24,6 +25,7 @@ APP_BASE_URL=https://your-app-domain.com
 Notes:
 
 - `HASHIDS_SALT` is required at startup.
+- `AUTH_SESSION_SECRET` is required for signing auth session tokens. Use a strong random secret in production.
 - `SHORT_CODE_BLACKLIST` is optional. Use a comma-separated list of reserved short codes (case-insensitive).
 - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are required in production to send verification emails.
 - `APP_BASE_URL` is optional but recommended in production for email verification links.
