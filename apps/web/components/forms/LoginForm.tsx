@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@ui/button"
 import { Input } from "@ui/input"
 import { Label } from "@ui/label"
-import SSOForm from "@components/forms/SSOForm"
+// import SSOForm from "@components/forms/SSOForm"
 import { useRouter } from "next/navigation"
 // import ForgotPasswordForm from "@components/forms/ForgotPasswordForm"
 
@@ -112,7 +112,7 @@ const LoginForm = () => {
         </form.Subscribe>
       </form>
 
-      <SSOForm />
+      {/* <SSOForm /> */}
       {/* <ForgotPasswordForm /> */}
       {submitError ? (
         <p className="mt-2 text-sm text-destructive" role="alert" aria-live="assertive">
