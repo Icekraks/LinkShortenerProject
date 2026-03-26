@@ -45,10 +45,9 @@ const RegisterForm = () => {
 
           throw new Error(errorData.error || "An unknown error occurred")
         }
+        setIsSubmitted(true)
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : "An unknown error occurred")
-      } finally {
-        setIsSubmitted(true)
       }
     },
   })
