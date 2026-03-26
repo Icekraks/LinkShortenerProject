@@ -4,8 +4,12 @@ import { Button } from "@ui/button"
 import { useForm } from "@tanstack/react-form-nextjs"
 import { Input } from "@ui/input"
 import { Label } from "@ui/label"
+import { useState } from "react"
 
 const ForgotPasswordForm = () => {
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const form = useForm({
     defaultValues: {
       email: "",
@@ -23,11 +27,9 @@ const ForgotPasswordForm = () => {
           const errorData = await response.json()
           throw new Error(errorData.error || errorData.message || "An unknown error occurred")
         }
-        alert(
-          "If an account with that email exists, you will receive password reset instructions shortly.",
-        )
+        setIsSubmitted(true)
       } catch (error) {
-        alert(error instanceof Error ? error.message : "An unknown error occurred")
+        setSubmitError(error instanceof Error ? error.message : "An unknown error occurred")
       }
     },
   })
@@ -39,42 +41,56 @@ const ForgotPasswordForm = () => {
         <p className="mb-4">
           Please enter your email address to receive password reset instructions.
         </p>
-        <form onSubmit={form.handleSubmit}>
-          <form.Field
-            name="email"
-            validators={{ onSubmit: ({ value }) => (value ? undefined : "Email is required") }}
-          >
-            {(field) => (
-              <div className="w-full">
-                <Label htmlFor="email" className="mb-2">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                  aria-describedby={field.state.meta.errors.length > 0 ? "email_error" : undefined}
-                />
-                {field.state.meta.errors[0] ? (
-                  <p id="email_error" className="mt-2 text-sm text-destructive">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                ) : null}
-              </div>
-            )}
-          </form.Field>
-          <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-            {([canSubmit, isSubmitting]) => (
-              <Button className="w-full mt-4" type="submit" disabled={!canSubmit || isSubmitting}>
-                Send Reset Instructions
-              </Button>
-            )}
-          </form.Subscribe>
-        </form>
+        {isSubmitted ? (
+          <p className="text-sm text-success">
+            If an account with that email exists, you will receive password reset instructions
+            shortly.
+          </p>
+        ) : (
+          <form onSubmit={form.handleSubmit}>
+            <form.Field
+              name="email"
+              validators={{ onSubmit: ({ value }) => (value ? undefined : "Email is required") }}
+            >
+              {(field) => (
+                <div className="w-full">
+                  <Label htmlFor="email" className="mb-2">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={field.state.meta.errors.length > 0}
+                    aria-describedby={
+                      field.state.meta.errors.length > 0 ? "email_error" : undefined
+                    }
+                  />
+                  {field.state.meta.errors[0] ? (
+                    <p id="email_error" className="mt-2 text-sm text-destructive">
+                      {String(field.state.meta.errors[0])}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </form.Field>
+            <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+              {([canSubmit, isSubmitting]) => (
+                <Button className="w-full mt-4" type="submit" disabled={!canSubmit || isSubmitting}>
+                  Send Reset Instructions
+                </Button>
+              )}
+            </form.Subscribe>
+            {submitError ? (
+              <p className="mt-2 text-sm text-destructive" role="alert" aria-live="assertive">
+                {submitError}
+              </p>
+            ) : null}
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
