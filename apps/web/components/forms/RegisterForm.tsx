@@ -113,6 +113,7 @@ const RegisterForm = () => {
                   size="icon"
                   variant="ghost"
                   type="button"
+                  aria-label="Toggle Password Visibility"
                   onClick={() => setViewPassword((prev) => ({ ...prev, password: !prev.password }))}
                 >
                   {viewPassword.password ? <EyeOff /> : <Eye />}
@@ -158,6 +159,7 @@ const RegisterForm = () => {
                   size="icon"
                   variant="ghost"
                   type="button"
+                  aria-label="Toggle Confirm Password Visibility"
                   onClick={() =>
                     setViewPassword((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))
                   }

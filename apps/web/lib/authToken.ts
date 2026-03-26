@@ -11,16 +11,19 @@ const getSessionSecret = () => {
     return envSecret
   }
 
-  throw new Error("AUTH_SESSION_SECRET is required in production")
+  throw new Error("AUTH_SESSION_SECRET is required")
 }
 
 const toBase64Url = (value: string) => Buffer.from(value, "utf8").toString("base64url")
 
 const fromBase64Url = (value: string) => Buffer.from(value, "base64url").toString("utf8")
 
-const buildSignature = (payloadBase64Url: string) => {
+const buildSignedData = (version: string, payloadBase64Url: string) =>
+  `${version}.${payloadBase64Url}`
+
+const buildSignature = (signedData: string) => {
   const secret = getSessionSecret()
-  return createHmac("sha256", secret).update(payloadBase64Url).digest("base64url")
+  return createHmac("sha256", secret).update(signedData).digest("base64url")
 }
 
 export const createSignedAuthSessionToken = ({
@@ -36,7 +39,8 @@ export const createSignedAuthSessionToken = ({
   })
 
   const payloadBase64Url = toBase64Url(payload)
-  const signature = buildSignature(payloadBase64Url)
+  const signedData = buildSignedData(SESSION_TOKEN_VERSION, payloadBase64Url)
+  const signature = buildSignature(signedData)
   return `${SESSION_TOKEN_VERSION}.${payloadBase64Url}.${signature}`
 }
 
@@ -49,12 +53,13 @@ export const isSignedAuthSessionTokenValid = (token: string) => {
 
   const [version, payloadBase64Url, signature] = parts
 
-  if (version !== SESSION_TOKEN_VERSION || !payloadBase64Url || !signature) {
+  if (!version || !payloadBase64Url || !signature) {
     return false
   }
 
   try {
-    const expectedSignature = buildSignature(payloadBase64Url)
+    const signedData = buildSignedData(version, payloadBase64Url)
+    const expectedSignature = buildSignature(signedData)
     const expectedBuffer = Buffer.from(expectedSignature, "utf8")
     const actualBuffer = Buffer.from(signature, "utf8")
 
@@ -63,6 +68,10 @@ export const isSignedAuthSessionTokenValid = (token: string) => {
     }
 
     if (!timingSafeEqual(expectedBuffer, actualBuffer)) {
+      return false
+    }
+
+    if (version !== SESSION_TOKEN_VERSION) {
       return false
     }
 

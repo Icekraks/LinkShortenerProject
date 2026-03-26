@@ -55,11 +55,13 @@ const buildVerificationUrl = (request: NextRequest, token: string) => {
   try {
     const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
     baseUrl.pathname = "/api/auth/verify-email"
+    baseUrl.search = ""
     baseUrl.searchParams.set("token", token)
     return baseUrl.toString()
   } catch {
     const fallbackUrl = new URL(request.nextUrl.origin)
     fallbackUrl.pathname = "/api/auth/verify-email"
+    fallbackUrl.search = ""
     fallbackUrl.searchParams.set("token", token)
     return fallbackUrl.toString()
   }
