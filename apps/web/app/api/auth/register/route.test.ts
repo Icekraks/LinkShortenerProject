@@ -7,6 +7,7 @@ const connectMock = vi.fn()
 const isRegisterRateLimitedMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
 const createEmailVerificationTokenMock = vi.fn()
+const buildVerificationUrlMock = vi.fn()
 const sendEmailVerificationEmailMock = vi.fn()
 
 vi.mock("@lib/db", () => ({
@@ -29,6 +30,7 @@ vi.mock("@/helpers/urlHelpers", () => ({
 
 vi.mock("@/lib/authVerification", () => ({
   createEmailVerificationToken: createEmailVerificationTokenMock,
+  buildVerificationUrl: buildVerificationUrlMock,
 }))
 
 vi.mock("@/lib/transactionalEmail", () => ({
@@ -49,6 +51,9 @@ describe("POST /api/auth/register", () => {
     isSameOriginRequestMock.mockReturnValue(true)
     isRegisterRateLimitedMock.mockResolvedValue(false)
     createEmailVerificationTokenMock.mockResolvedValue("verification-token")
+    buildVerificationUrlMock.mockReturnValue(
+      "http://localhost:3000/api/auth/verify-email?token=verification-token",
+    )
     sendEmailVerificationEmailMock.mockResolvedValue({ sent: true, skipped: false })
     queryMock.mockResolvedValue({ rows: [] })
   })

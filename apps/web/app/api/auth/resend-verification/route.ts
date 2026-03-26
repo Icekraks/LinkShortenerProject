@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 
 import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
-import { createEmailVerificationToken } from "@/lib/authVerification"
+import { buildVerificationUrl, createEmailVerificationToken } from "@/lib/authVerification"
 import { dbPool } from "@/lib/db"
 import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
 
@@ -47,24 +47,6 @@ const parseAndValidateBody = async (request: NextRequest) => {
   }
 
   return { email }
-}
-
-const buildVerificationUrl = (request: NextRequest, token: string) => {
-  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
-
-  try {
-    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
-    baseUrl.pathname = "/api/auth/verify-email"
-    baseUrl.search = ""
-    baseUrl.searchParams.set("token", token)
-    return baseUrl.toString()
-  } catch {
-    const fallbackUrl = new URL(request.nextUrl.origin)
-    fallbackUrl.pathname = "/api/auth/verify-email"
-    fallbackUrl.search = ""
-    fallbackUrl.searchParams.set("token", token)
-    return fallbackUrl.toString()
-  }
 }
 
 export async function POST(request: NextRequest) {

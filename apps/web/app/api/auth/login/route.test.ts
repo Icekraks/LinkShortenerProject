@@ -9,6 +9,7 @@ const connectMock = vi.fn()
 const isLoginRateLimitedMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
 const createEmailVerificationTokenMock = vi.fn()
+const buildVerificationUrlMock = vi.fn()
 const sendEmailVerificationEmailMock = vi.fn()
 
 vi.mock("@lib/db", () => ({
@@ -31,6 +32,7 @@ vi.mock("@/helpers/urlHelpers", () => ({
 
 vi.mock("@/lib/authVerification", () => ({
   createEmailVerificationToken: createEmailVerificationTokenMock,
+  buildVerificationUrl: buildVerificationUrlMock,
 }))
 
 vi.mock("@/lib/transactionalEmail", () => ({
@@ -78,6 +80,9 @@ describe("POST /api/auth/login", () => {
     isLoginRateLimitedMock.mockResolvedValue(false)
     queryMock.mockResolvedValue({ rows: [] })
     createEmailVerificationTokenMock.mockResolvedValue("verification-token")
+    buildVerificationUrlMock.mockReturnValue(
+      "http://localhost:3000/api/auth/verify-email?token=verification-token",
+    )
     sendEmailVerificationEmailMock.mockResolvedValue({ sent: true, skipped: false })
   })
 
@@ -216,6 +221,10 @@ describe("POST /api/auth/login", () => {
         email: "user@example.com",
         ttlMinutes: 60 * 24,
       },
+    )
+    expect(buildVerificationUrlMock).toHaveBeenCalledWith(
+      expect.any(NextRequest),
+      "verification-token",
     )
     expect(sendEmailVerificationEmailMock).toHaveBeenCalledWith({
       to: "user@example.com",

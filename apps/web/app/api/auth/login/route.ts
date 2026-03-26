@@ -6,7 +6,7 @@ import { promisify } from "node:util"
 import { dbPool } from "@/lib/db"
 import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
-import { createEmailVerificationToken } from "@/lib/authVerification"
+import { buildVerificationUrl, createEmailVerificationToken } from "@/lib/authVerification"
 import { createSignedAuthSessionToken } from "@lib/authToken"
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/authSession"
 import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
@@ -97,24 +97,6 @@ const verifyPassword = async (password: string, passwordHash: string, algorithm:
     PASSWORD_HASH_KEY_LENGTH,
   )) as Buffer
   return timingSafeEqual(derivedKey, parsedHash.expectedKey)
-}
-
-const buildVerificationUrl = (request: NextRequest, token: string) => {
-  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
-
-  try {
-    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
-    baseUrl.pathname = "/api/auth/verify-email"
-    baseUrl.search = ""
-    baseUrl.searchParams.set("token", token)
-    return baseUrl.toString()
-  } catch {
-    const fallbackUrl = new URL(request.nextUrl.origin)
-    fallbackUrl.pathname = "/api/auth/verify-email"
-    fallbackUrl.search = ""
-    fallbackUrl.searchParams.set("token", token)
-    return fallbackUrl.toString()
-  }
 }
 
 const buildSessionExpiry = () => {

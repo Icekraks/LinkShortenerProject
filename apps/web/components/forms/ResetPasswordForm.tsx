@@ -181,7 +181,7 @@ const ResetPasswordForm = () => {
       <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
         {([canSubmit, isSubmitting]) => (
           <Button className="w-full mt-4" type="submit" disabled={!canSubmit || isSubmitting}>
-            Register
+            Reset Password
           </Button>
         )}
       </form.Subscribe>

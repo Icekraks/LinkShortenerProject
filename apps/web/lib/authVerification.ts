@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createHash, randomBytes } from "node:crypto"
+import type { NextRequest } from "next/server"
 
 import { dbPool } from "@/lib/db"
 
@@ -12,6 +13,35 @@ const EMAIL_VERIFY_PURPOSE = "email_verify"
 const PASSWORD_RESET_PURPOSE = "password_reset"
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex")
+
+const buildAuthUrl = ({
+  request,
+  token,
+  path,
+}: {
+  request: NextRequest
+  token: string
+  path: string
+}) => {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
+
+  try {
+    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
+    baseUrl.pathname = path
+    baseUrl.search = ""
+    baseUrl.searchParams.set("token", token)
+    return baseUrl.toString()
+  } catch {
+    const fallbackUrl = new URL(request.nextUrl.origin)
+    fallbackUrl.pathname = path
+    fallbackUrl.search = ""
+    fallbackUrl.searchParams.set("token", token)
+    return fallbackUrl.toString()
+  }
+}
+
+export const buildVerificationUrl = (request: NextRequest, token: string) =>
+  buildAuthUrl({ request, token, path: "/api/auth/verify-email" })
 
 const createVerificationToken = async (
   db: DbQueryable,
