@@ -1,30 +1,15 @@
+import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
+import { isSameOriginRequest } from "@/helpers/urlHelpers"
+import { dbPool } from "@/lib/db"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { randomBytes, scrypt as scryptCallback } from "node:crypto"
+import { createHash, randomBytes, scrypt as scryptCallback } from "node:crypto"
 import { promisify } from "node:util"
-
-import { dbPool } from "@/lib/db"
-import { isRegisterRateLimited, REGISTER_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
-import { isSameOriginRequest } from "@/helpers/urlHelpers"
-import { buildVerificationUrl, createEmailVerificationToken } from "@/lib/authVerification"
-import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
 
 export const runtime = "nodejs"
 
 const scryptAsync = promisify(scryptCallback)
-
-const MIN_PASSWORD_LENGTH = 8
 const PASSWORD_HASH_KEY_LENGTH = 64
-const EMAIL_VERIFICATION_TTL_MINUTES = 60 * 24
-
-const isUniqueViolationError = (error: unknown) => {
-  if (!error || typeof error !== "object") {
-    return false
-  }
-
-  const maybePgError = error as { code?: string; constraint?: string }
-  return maybePgError.code === "23505" && maybePgError.constraint === "users_email_key"
-}
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 
@@ -37,7 +22,7 @@ const isValidEmail = (email: string) => {
 }
 
 const hasStrongPassword = (password: string) => {
-  if (password.length < MIN_PASSWORD_LENGTH || password.length > 256) {
+  if (password.length < 8 || password.length > 256) {
     return false
   }
 
@@ -51,9 +36,10 @@ const hasStrongPassword = (password: string) => {
 const hashPassword = async (password: string) => {
   const salt = randomBytes(16)
   const key = (await scryptAsync(password, salt, PASSWORD_HASH_KEY_LENGTH)) as Buffer
-
   return `scrypt$${salt.toString("hex")}$${key.toString("hex")}`
 }
+
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex")
 
 const parseAndValidateBody = async (request: NextRequest) => {
   let body: unknown
@@ -70,6 +56,7 @@ const parseAndValidateBody = async (request: NextRequest) => {
 
   const maybeEmail = (body as { email?: unknown }).email
   const maybePassword = (body as { password?: unknown }).password
+  const maybeToken = (body as { token?: unknown }).token
 
   if (typeof maybeEmail !== "string" || typeof maybePassword !== "string") {
     return { error: "Email and password are required" }
@@ -77,6 +64,7 @@ const parseAndValidateBody = async (request: NextRequest) => {
 
   const email = normalizeEmail(maybeEmail)
   const password = maybePassword
+  const tokenFromBody = typeof maybeToken === "string" ? maybeToken.trim() : undefined
 
   if (!isValidEmail(email)) {
     return { error: "Please provide a valid email address" }
@@ -89,7 +77,7 @@ const parseAndValidateBody = async (request: NextRequest) => {
     }
   }
 
-  return { email, password }
+  return { email, password, tokenFromBody }
 }
 
 export async function POST(request: NextRequest) {
@@ -98,18 +86,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const rateLimited = await isRegisterRateLimited(request)
+    const rateLimited = await isLoginRateLimited(request)
 
     if (rateLimited) {
       return NextResponse.json(
         {
           error: "Too many requests. Please try again shortly.",
-          retryAfterSeconds: REGISTER_RATE_LIMIT.windowSeconds,
+          retryAfterSeconds: LOGIN_RATE_LIMIT.windowSeconds,
         },
         {
           status: 429,
           headers: {
-            "Retry-After": String(REGISTER_RATE_LIMIT.windowSeconds),
+            "Retry-After": String(LOGIN_RATE_LIMIT.windowSeconds),
           },
         },
       )
@@ -121,82 +109,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error }, { status: 400 })
     }
 
+    const token = request.nextUrl.searchParams.get("token")?.trim() ?? parsed.tokenFromBody
+
+    if (!token) {
+      return NextResponse.json({ error: "Token is required" }, { status: 400 })
+    }
+
     const { email, password } = parsed
+    const tokenHash = hashToken(token)
     const passwordHash = await hashPassword(password)
-    let verificationToken: string | null = null
 
     const client = await dbPool.connect()
 
     try {
       await client.query("BEGIN")
 
-      const userResult = await client.query<{
+      const tokenResult = await client.query<{
         id: string
+        user_id: string | null
         email: string
-        email_verified: boolean
       }>(
-        `INSERT INTO users (email)
-         VALUES ($1)
-         RETURNING id, email, email_verified`,
-        [email],
+        `SELECT id, user_id, email
+         FROM auth_verification_tokens
+         WHERE token_hash = $1
+           AND lower(email::text) = lower($2::text)
+           AND purpose = 'password_reset'
+           AND consumed_at IS NULL
+           AND expires_at > NOW()
+         FOR UPDATE`,
+        [tokenHash, email],
       )
 
-      const createdUser = userResult.rows[0]
+      const tokenRow = tokenResult.rows[0]
 
-      if (!createdUser) {
-        throw new Error("Failed to create user")
+      if (!tokenRow?.user_id) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "Invalid or expired reset token" }, { status: 400 })
       }
 
       await client.query(
-        `INSERT INTO user_credentials (user_id, password_hash, password_algorithm)
-         VALUES ($1, $2, 'scrypt')`,
-        [createdUser.id, passwordHash],
+        `INSERT INTO user_credentials (user_id, password_hash, password_algorithm, password_updated_at)
+         VALUES ($1, $2, 'scrypt', NOW())
+         ON CONFLICT (user_id)
+         DO UPDATE SET
+           password_hash = EXCLUDED.password_hash,
+           password_algorithm = EXCLUDED.password_algorithm,
+           password_updated_at = NOW()`,
+        [tokenRow.user_id, passwordHash],
       )
 
-      verificationToken = await createEmailVerificationToken(client, {
-        userId: createdUser.id,
-        email: createdUser.email,
-        ttlMinutes: EMAIL_VERIFICATION_TTL_MINUTES,
-      })
+      await client.query(
+        `UPDATE auth_verification_tokens
+         SET consumed_at = NOW()
+         WHERE id = $1`,
+        [tokenRow.id],
+      )
 
       await client.query("COMMIT")
-
-      const verificationUrl = verificationToken
-        ? buildVerificationUrl(request, verificationToken)
-        : null
-
-      const emailResult = verificationUrl
-        ? await sendEmailVerificationEmail({
-            to: createdUser.email,
-            verificationUrl,
-          })
-        : { sent: false, skipped: true }
-
-      return NextResponse.json(
-        {
-          ok: true,
-          verificationEmailSent: emailResult.sent,
-          user: {
-            id: createdUser.id,
-            email: createdUser.email,
-            emailVerified: createdUser.email_verified,
-          },
-        },
-        { status: 201 },
-      )
+      return NextResponse.json({ ok: true }, { status: 200 })
     } catch (error) {
       await client.query("ROLLBACK")
-
-      if (isUniqueViolationError(error)) {
-        return NextResponse.json({ error: "Email is already registered" }, { status: 409 })
-      }
-
       throw error
     } finally {
       client.release()
     }
   } catch (error) {
-    console.error("Failed to register user", error)
-    return NextResponse.json({ error: "Failed to register user" }, { status: 500 })
+    console.error("Failed to reset password", error)
+    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 })
   }
 }

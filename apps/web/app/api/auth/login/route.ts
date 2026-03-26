@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto"
+import { scrypt as scryptCallback, timingSafeEqual } from "node:crypto"
 import { promisify } from "node:util"
 
 import { dbPool } from "@/lib/db"
 import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
+import { buildVerificationUrl, createEmailVerificationToken } from "@/lib/authVerification"
+import { createSignedAuthSessionToken } from "@lib/authToken"
+import { AUTH_SESSION_COOKIE_NAME } from "@/lib/authSession"
+import { sendEmailVerificationEmail } from "@/lib/transactionalEmail"
 
 export const runtime = "nodejs"
 
@@ -13,7 +17,7 @@ const scryptAsync = promisify(scryptCallback)
 
 const PASSWORD_HASH_KEY_LENGTH = 64
 const SESSION_TTL_DAYS = 30
-const AUTH_SESSION_COOKIE_NAME = "link_shortener_session"
+const EMAIL_VERIFICATION_TTL_MINUTES = 60 * 24
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 
@@ -164,17 +168,49 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
       }
 
-      const sessionToken = randomBytes(32).toString("hex")
-      const expiresAt = buildSessionExpiry()
+      if (!credential.email_verified) {
+        const pendingTokenResult = await client.query<{ id: string }>(
+          `SELECT id FROM auth_verification_tokens
+           WHERE user_id = $1
+             AND purpose = 'email_verify'
+             AND consumed_at IS NULL
+             AND expires_at > NOW()
+           LIMIT 1`,
+          [credential.id],
+        )
 
-      await client.query<{
-        id: string
-      }>(
-        `INSERT INTO sessions (user_id, session_token, expires_at)
-         VALUES ($1, $2, $3)
-         RETURNING id`,
-        [credential.id, sessionToken, expiresAt],
-      )
+        let verificationEmailSent = false
+
+        if (!pendingTokenResult.rows[0]) {
+          const token = await createEmailVerificationToken(client, {
+            userId: credential.id,
+            email: credential.email,
+            ttlMinutes: EMAIL_VERIFICATION_TTL_MINUTES,
+          })
+
+          const verificationUrl = buildVerificationUrl(request, token)
+          const emailResult = await sendEmailVerificationEmail({
+            to: credential.email,
+            verificationUrl,
+          })
+          verificationEmailSent = emailResult.sent
+        }
+
+        return NextResponse.json(
+          {
+            error: "Please verify your email before logging in",
+            code: "EMAIL_NOT_VERIFIED",
+            verificationEmailSent,
+          },
+          { status: 403 },
+        )
+      }
+
+      const expiresAt = buildSessionExpiry()
+      const sessionToken = createSignedAuthSessionToken({
+        userId: credential.id,
+        expiresAt,
+      })
 
       const response = NextResponse.json(
         {

@@ -1,6 +1,6 @@
 import Link from "next/link"
-import DesktopNavigation from "@components/layout/DesktopNavigation"
-import MobileNavigation from "@components/layout/MobileNavigation"
+import DesktopNavigation from "@components/navigations/DesktopNavigation"
+import MobileNavigation from "@components/navigations/MobileNavigation"
 import Image from "next/image"
 
 const Header = () => {

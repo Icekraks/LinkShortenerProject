@@ -19,9 +19,11 @@ const describeIfIntegration = integrationDatabaseUrl ? describe : describe.skip
 
 describeIfIntegration("Auth integration", () => {
   let pool: Pool | undefined
+  const originalAuthSessionSecret = process.env.AUTH_SESSION_SECRET
 
   beforeAll(async () => {
     process.env.DATABASE_URL = integrationDatabaseUrl
+    process.env.AUTH_SESSION_SECRET = process.env.AUTH_SESSION_SECRET ?? "integration-auth-secret"
 
     const schemaFilePath = path.resolve(__dirname, "../../../../db/schema.sql")
     const schemaSql = fs.readFileSync(schemaFilePath, "utf8")
@@ -53,12 +55,18 @@ describeIfIntegration("Auth integration", () => {
     // Truncate all tables with CASCADE to handle foreign keys
     // Note: RESTART IDENTITY comes before CASCADE in PostgreSQL syntax
     await pool.query(
-      "TRUNCATE TABLE rate_limit_events, links, auth_verification_tokens, accounts, sessions, user_credentials, users RESTART IDENTITY CASCADE",
+      "TRUNCATE TABLE rate_limit_events, links, auth_verification_tokens, accounts, user_credentials, users RESTART IDENTITY CASCADE",
     )
     vi.resetModules()
   })
 
   afterAll(async () => {
+    if (originalAuthSessionSecret === undefined) {
+      delete process.env.AUTH_SESSION_SECRET
+    } else {
+      process.env.AUTH_SESSION_SECRET = originalAuthSessionSecret
+    }
+
     if (pool) {
       await pool.end()
     }
@@ -100,6 +108,9 @@ describeIfIntegration("Auth integration", () => {
       expect(userResult.rows).toHaveLength(1)
       expect(userResult.rows[0].email).toBe("user@example.com")
 
+      // Mark user verified so login can proceed.
+      await pool.query(`UPDATE users SET email_verified = TRUE WHERE id = $1`, [userId])
+
       // Now login with same credentials
       vi.resetModules()
       const { POST: loginPOST } = await import("./login/route")
@@ -123,13 +134,6 @@ describeIfIntegration("Auth integration", () => {
       expect(loginBody.ok).toBe(true)
       expect(loginBody.user.id).toBe(userId)
       expect(loginBody.user.email).toBe("user@example.com")
-
-      // Check that session was created
-      const sessionResult = await pool.query("SELECT * FROM sessions WHERE user_id = $1", [userId])
-      expect(sessionResult.rows).toHaveLength(1)
-      const createdSession = sessionResult.rows[0]
-      expect(createdSession.session_token).toBeTruthy()
-      expect(createdSession.expires_at).toBeTruthy()
 
       // Check cookie was set
       const setCookie = loginResponse.headers.get("set-cookie")
@@ -180,10 +184,50 @@ describeIfIntegration("Auth integration", () => {
 
       expect(loginResponse.status).toBe(401)
       expect(loginBody.error).toBe("Invalid email or password")
+    })
 
-      // Verify no session was created
-      const sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(0)
+    it("blocks login until email is verified", async () => {
+      if (!pool) {
+        throw new Error("Integration pool was not initialized")
+      }
+
+      const { POST: registerPOST } = await import("./register/route")
+
+      const registerRequest = new NextRequest("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "user@example.com",
+          password: "TestPassword123",
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          origin: "http://localhost:3000",
+        },
+      })
+
+      await registerPOST(registerRequest)
+
+      vi.resetModules()
+      const { POST: loginPOST } = await import("./login/route")
+
+      const loginRequest = new NextRequest("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "user@example.com",
+          password: "TestPassword123",
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          origin: "http://localhost:3000",
+        },
+      })
+
+      const loginResponse = await loginPOST(loginRequest)
+      const loginBody = await loginResponse.json()
+
+      expect(loginResponse.status).toBe(403)
+      expect(loginBody.error).toBe("Please verify your email before logging in")
+      expect(loginBody.code).toBe("EMAIL_NOT_VERIFIED")
     })
 
     it("rejects registration with weak password", async () => {
@@ -290,6 +334,10 @@ describeIfIntegration("Auth integration", () => {
 
       await registerPOST(registerRequest)
 
+      await pool.query(`UPDATE users SET email_verified = TRUE WHERE email = $1`, [
+        "user@example.com",
+      ])
+
       vi.resetModules()
       const { POST: loginPOST } = await import("./login/route")
 
@@ -312,10 +360,6 @@ describeIfIntegration("Auth integration", () => {
 
       expect(sessionToken).toBeTruthy()
 
-      // Verify session exists
-      let sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(1)
-
       // Now logout with the session cookie
       vi.resetModules()
       const { POST: logoutPOST } = await import("./logout/route")
@@ -333,10 +377,6 @@ describeIfIntegration("Auth integration", () => {
 
       expect(logoutResponse.status).toBe(200)
       expect(logoutBody.ok).toBe(true)
-
-      // Verify session was deleted
-      sessionResult = await pool.query("SELECT * FROM sessions")
-      expect(sessionResult.rows).toHaveLength(0)
 
       // Check cookie was cleared
       const setCookie = logoutResponse.headers.get("set-cookie")

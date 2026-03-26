@@ -2,6 +2,7 @@ import { dbPool } from "@/lib/db"
 import {
   DELETE_EXPIRED_LINKS_QUERY,
   DELETE_OLD_RATE_LIMIT_EVENTS_QUERY,
+  DELETE_EXPIRED_VERIFICATION_TOKENS_QUERY,
 } from "@/sql/cleanupShortLink"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
@@ -44,11 +45,15 @@ async function runCleanup(request: NextRequest) {
     const rateLimitEventsResult = await dbPool.query<{ deleted_count: number }>(
       DELETE_OLD_RATE_LIMIT_EVENTS_QUERY,
     )
+    const expiredVerificationTokensResult = await dbPool.query<{ deleted_count: number }>(
+      DELETE_EXPIRED_VERIFICATION_TOKENS_QUERY,
+    )
 
     return NextResponse.json({
       message: "Cleanup completed successfully",
       deletedExpiredLinks: expiredLinksResult.rows[0]?.deleted_count ?? 0,
       deletedRateLimitEvents: rateLimitEventsResult.rows[0]?.deleted_count ?? 0,
+      deletedExpiredVerificationTokens: expiredVerificationTokensResult.rows[0]?.deleted_count ?? 0,
     })
   } catch (error) {
     console.error("Error during cleanup", error)

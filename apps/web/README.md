@@ -15,13 +15,20 @@ Set these in root `.env` / `.env.local` or `apps/web/.env.local`:
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=verify-full
 HASHIDS_SALT=replace-with-a-long-random-secret
+AUTH_SESSION_SECRET=replace-with-a-long-random-secret
 SHORT_CODE_BLACKLIST=admin,api,www,root,support,help
+RESEND_API_KEY=re_xxxxxxxxx
+RESEND_FROM_EMAIL=Link Shortener <noreply@yourdomain.com>
+APP_BASE_URL=https://your-app-domain.com
 ```
 
 Notes:
 
 - `HASHIDS_SALT` is required at startup.
+- `AUTH_SESSION_SECRET` is required for signing auth session tokens. Use a strong random secret in production.
 - `SHORT_CODE_BLACKLIST` is optional. Use a comma-separated list of reserved short codes (case-insensitive).
+- `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are required in production to send verification emails.
+- `APP_BASE_URL` is optional but recommended in production for email verification links.
 - If `DATABASE_URL` is empty, the app falls back to `postgresql://localhost:5432/link_shortener`.
 - `DATABASE_SSL=false` forces SSL off.
 - Otherwise, SSL is enabled when `DATABASE_SSL=true` or `sslmode` in `DATABASE_URL` is `verify-full`.
@@ -81,6 +88,20 @@ Runs scheduled cleanup tasks:
 - Uses `CRON_SECRET` on the server
 
 `GET` exists for Vercel Cron compatibility (Vercel invokes cron paths with `GET`).
+
+### Auth verification routes
+
+- `GET /api/auth/verify-email?token=...`:
+  - Verifies account email when token is valid and unexpired.
+  - Redirects to `/account/login?verified=1` on success.
+  - Redirects to `/account/login?verified=0` on failure.
+- `POST /api/auth/resend-verification`:
+  - Same-origin endpoint to send a fresh verification email to unverified users.
+  - Uses auth rate limiting.
+- `POST /api/auth/forgot-password`:
+  - Same-origin endpoint to send a password reset email when the account exists.
+  - Always returns a generic success response to avoid leaking whether an email is registered.
+  - Creates a `password_reset` token and emails a reset link to `/account/reset-password?token=...`.
 
 ## Testing
 

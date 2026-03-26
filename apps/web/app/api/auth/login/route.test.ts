@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 import { randomBytes, scrypt as scryptCallback } from "node:crypto"
 import { promisify } from "node:util"
@@ -8,6 +8,9 @@ const releaseMock = vi.fn()
 const connectMock = vi.fn()
 const isLoginRateLimitedMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
+const createEmailVerificationTokenMock = vi.fn()
+const buildVerificationUrlMock = vi.fn()
+const sendEmailVerificationEmailMock = vi.fn()
 
 vi.mock("@lib/db", () => ({
   dbPool: {
@@ -25,6 +28,15 @@ vi.mock("@/helpers/rateLimitHelpers", () => ({
 
 vi.mock("@/helpers/urlHelpers", () => ({
   isSameOriginRequest: isSameOriginRequestMock,
+}))
+
+vi.mock("@/lib/authVerification", () => ({
+  createEmailVerificationToken: createEmailVerificationTokenMock,
+  buildVerificationUrl: buildVerificationUrlMock,
+}))
+
+vi.mock("@/lib/transactionalEmail", () => ({
+  sendEmailVerificationEmail: sendEmailVerificationEmailMock,
 }))
 
 const scryptAsync = promisify(scryptCallback)
@@ -45,17 +57,33 @@ const makeRequest = (body: unknown) =>
 
 describe("POST /api/auth/login", () => {
   let validPasswordHash: string
+  const originalAuthSessionSecret = process.env.AUTH_SESSION_SECRET
 
   beforeAll(async () => {
     validPasswordHash = await hashPasswordForTest("Password123")
   })
 
+  afterAll(() => {
+    if (originalAuthSessionSecret === undefined) {
+      delete process.env.AUTH_SESSION_SECRET
+      return
+    }
+
+    process.env.AUTH_SESSION_SECRET = originalAuthSessionSecret
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.AUTH_SESSION_SECRET = "test-auth-session-secret"
     connectMock.mockResolvedValue({ query: queryMock, release: releaseMock })
     isSameOriginRequestMock.mockReturnValue(true)
     isLoginRateLimitedMock.mockResolvedValue(false)
     queryMock.mockResolvedValue({ rows: [] })
+    createEmailVerificationTokenMock.mockResolvedValue("verification-token")
+    buildVerificationUrlMock.mockReturnValue(
+      "http://localhost:3000/api/auth/verify-email?token=verification-token",
+    )
+    sendEmailVerificationEmailMock.mockResolvedValue({ sent: true, skipped: false })
   })
 
   it("returns 403 when request is cross-origin", async () => {
@@ -159,6 +187,49 @@ describe("POST /api/auth/login", () => {
 
     expect(response.status).toBe(401)
     expect(body.error).toBe("Invalid email or password")
+    expect(releaseMock).toHaveBeenCalledOnce()
+  })
+
+  it("returns 403 when user email is not verified", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "user-id-1",
+            email: "user@example.com",
+            email_verified: false,
+            password_hash: validPasswordHash,
+            password_algorithm: "scrypt",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const { POST } = await import("./route")
+    const response = await POST(makeRequest({ email: "user@example.com", password: "Password123" }))
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe("Please verify your email before logging in")
+    expect(body.code).toBe("EMAIL_NOT_VERIFIED")
+    expect(body.verificationEmailSent).toBe(true)
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(createEmailVerificationTokenMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: queryMock, release: releaseMock }),
+      {
+        userId: "user-id-1",
+        email: "user@example.com",
+        ttlMinutes: 60 * 24,
+      },
+    )
+    expect(buildVerificationUrlMock).toHaveBeenCalledWith(
+      expect.any(NextRequest),
+      "verification-token",
+    )
+    expect(sendEmailVerificationEmailMock).toHaveBeenCalledWith({
+      to: "user@example.com",
+      verificationUrl: "http://localhost:3000/api/auth/verify-email?token=verification-token",
+    })
     expect(releaseMock).toHaveBeenCalledOnce()
   })
 
