@@ -1,11 +1,14 @@
 import { Button } from "@ui/button"
 import { CircleUser } from "lucide-react"
+import { cache } from "react"
 import Link from "next/link"
 
 import { hasActiveSession } from "@/lib/authSession"
 
+const getCachedHasActiveSession = cache(async () => hasActiveSession())
+
 const AccountButton = async () => {
-  const isLoggedIn = await hasActiveSession()
+  const isLoggedIn = await getCachedHasActiveSession()
   const accountHref = isLoggedIn ? "/account/dashboard" : "/account/login"
   const accountAriaLabel = isLoggedIn ? "Open your account dashboard" : "Login to your account"
 
