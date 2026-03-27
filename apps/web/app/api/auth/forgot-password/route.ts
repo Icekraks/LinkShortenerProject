@@ -5,7 +5,7 @@ import { isLoginRateLimited, LOGIN_RATE_LIMIT } from "@/helpers/rateLimitHelpers
 import { isSameOriginRequest } from "@/helpers/urlHelpers"
 import { createPasswordResetToken } from "@/lib/authVerification"
 import { dbPool } from "@/lib/db"
-import { sendPasswordResetEmail } from "@/lib/transactionalEmail"
+import { sendPasswordResetEmail, sendSsoLoginHintEmail } from "@/lib/transactionalEmail"
 
 export const runtime = "nodejs"
 
@@ -67,6 +67,22 @@ const buildPasswordResetUrl = (request: NextRequest, token: string) => {
   }
 }
 
+const buildLoginUrl = (request: NextRequest) => {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim()
+
+  try {
+    const baseUrl = configuredBaseUrl ? new URL(configuredBaseUrl) : new URL(request.nextUrl.origin)
+    baseUrl.pathname = "/account/login"
+    baseUrl.search = ""
+    return baseUrl.toString()
+  } catch {
+    const fallbackUrl = new URL(request.nextUrl.origin)
+    fallbackUrl.pathname = "/account/login"
+    fallbackUrl.search = ""
+    return fallbackUrl.toString()
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!isSameOriginRequest(request)) {
@@ -101,28 +117,50 @@ export async function POST(request: NextRequest) {
     const userResult = await dbPool.query<{
       id: string
       email: string
+      has_password: boolean
+      providers: string[] | null
     }>(
-      `SELECT id, email
-			 FROM users
-			 WHERE email = $1`,
+      `SELECT
+         u.id,
+         u.email,
+         EXISTS(
+           SELECT 1
+           FROM user_credentials uc
+           WHERE uc.user_id = u.id
+         ) AS has_password,
+         ARRAY_REMOVE(ARRAY_AGG(DISTINCT a.provider), NULL) AS providers
+       FROM users u
+       LEFT JOIN accounts a ON a.user_id = u.id
+       WHERE u.email = $1
+       GROUP BY u.id, u.email`,
       [email],
     )
 
     const user = userResult.rows[0]
 
     if (user) {
-      const token = await createPasswordResetToken(dbPool, {
-        userId: user.id,
-        email: user.email,
-        ttlMinutes: PASSWORD_RESET_TTL_MINUTES,
-      })
+      if (user.has_password !== false) {
+        const token = await createPasswordResetToken(dbPool, {
+          userId: user.id,
+          email: user.email,
+          ttlMinutes: PASSWORD_RESET_TTL_MINUTES,
+        })
 
-      const resetUrl = buildPasswordResetUrl(request, token)
+        const resetUrl = buildPasswordResetUrl(request, token)
 
-      await sendPasswordResetEmail({
-        to: user.email,
-        resetUrl,
-      })
+        await sendPasswordResetEmail({
+          to: user.email,
+          resetUrl,
+        })
+      } else {
+        const loginUrl = buildLoginUrl(request)
+
+        await sendSsoLoginHintEmail({
+          to: user.email,
+          loginUrl,
+          providers: user.providers ?? [],
+        })
+      }
     }
 
     return NextResponse.json({ ok: true }, { status: 200 })
