@@ -3,7 +3,7 @@ import GreetingComponent from "@/components/GreetingComponent"
 export default function Contact() {
   return (
     <div className="flex min-h-screen items-center justify-center font-sans">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col py-32 px-16">
+      <main className="flex min-h-screen w-full max-w-3xl flex-col py-8 md:py-16 px-16">
         <h1 className="text-xl font-bold mb-4">Contact Us</h1>
         <GreetingComponent />
         <p className="mt-4 text-center">
