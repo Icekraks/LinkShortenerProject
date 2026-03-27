@@ -87,3 +87,42 @@ export const sendPasswordResetEmail = async ({
     return { sent: false as const, skipped: false as const }
   }
 }
+
+export const sendSsoLoginHintEmail = async ({
+  to,
+  loginUrl,
+  providers,
+}: {
+  to: string
+  loginUrl: string
+  providers: string[]
+}) => {
+  const from = process.env.RESEND_FROM_EMAIL?.trim()
+  const client = getResendClient()
+
+  if (!client || !from) {
+    return { sent: false as const, skipped: true as const }
+  }
+
+  const providerText = providers.length > 0 ? providers.join(", ") : "a social login provider"
+
+  try {
+    const response = await client.emails.send({
+      from,
+      to,
+      subject: "Use social sign-in for your account",
+      text: `This account signs in with ${providerText}. Open this link to continue: ${loginUrl}`,
+      html: `<p>We received a password reset request for your account.</p><p>This account signs in with ${providerText}, so there is no password to reset.</p><p>Please continue from the login page and choose your social sign-in provider: <a href="${loginUrl}">Sign in</a>.</p>`,
+    })
+
+    if (response.error) {
+      console.error("Failed to send email:", response.error)
+      return { sent: false as const, skipped: false as const }
+    }
+
+    return { sent: true as const, skipped: false as const }
+  } catch (error) {
+    console.error("Failed to send SSO login hint email", error)
+    return { sent: false as const, skipped: false as const }
+  }
+}

@@ -16,6 +16,9 @@ Set these in root `.env` / `.env.local` or `apps/web/.env.local`:
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>.neon.tech/<db>?sslmode=verify-full
 HASHIDS_SALT=replace-with-a-long-random-secret
 AUTH_SESSION_SECRET=replace-with-a-long-random-secret
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+SSO_GITHUB_ENTRY_URL=https://auth.your-company.com/github/start
 SHORT_CODE_BLACKLIST=admin,api,www,root,support,help
 RESEND_API_KEY=re_xxxxxxxxx
 RESEND_FROM_EMAIL=Link Shortener <noreply@yourdomain.com>
@@ -26,6 +29,10 @@ Notes:
 
 - `HASHIDS_SALT` is required at startup.
 - `AUTH_SESSION_SECRET` is required for signing auth session tokens. Use a strong random secret in production.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` enable the built-in Google OAuth flow.
+- In Google Cloud, set the authorized redirect URI to `/api/auth/sso/google/callback` on your app domain.
+- `SSO_<PROVIDER>_ENTRY_URL` enables providers handled by an external auth broker.
+- The auth UI only shows providers that are actually configured.
 - `SHORT_CODE_BLACKLIST` is optional. Use a comma-separated list of reserved short codes (case-insensitive).
 - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are required in production to send verification emails.
 - `APP_BASE_URL` is optional but recommended in production for email verification links.
@@ -102,6 +109,15 @@ Runs scheduled cleanup tasks:
   - Same-origin endpoint to send a password reset email when the account exists.
   - Always returns a generic success response to avoid leaking whether an email is registered.
   - Creates a `password_reset` token and emails a reset link to `/account/reset-password?token=...`.
+- `GET /api/auth/sso/:provider`:
+  - Starts the built-in Google OAuth flow when Google client credentials are configured.
+  - Otherwise redirects to a configured provider-specific SSO entry URL.
+  - Appends `intent`, `provider`, and absolute `returnTo` query params for upstream broker flows.
+  - Returns `404` for unsupported providers and `503` when a provider is not configured.
+- `GET /api/auth/sso/google/callback`:
+  - Exchanges the Google authorization code for user info.
+  - Creates or links a local user/account record.
+  - Sets the app auth session cookie and redirects to the requested return path.
 
 ## Testing
 

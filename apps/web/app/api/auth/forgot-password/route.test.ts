@@ -6,6 +6,7 @@ const isLoginRateLimitedMock = vi.fn()
 const isSameOriginRequestMock = vi.fn()
 const createPasswordResetTokenMock = vi.fn()
 const sendPasswordResetEmailMock = vi.fn()
+const sendSsoLoginHintEmailMock = vi.fn()
 
 vi.mock("@/helpers/rateLimitHelpers", () => ({
   LOGIN_RATE_LIMIT: {
@@ -31,6 +32,7 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/transactionalEmail", () => ({
   sendPasswordResetEmail: sendPasswordResetEmailMock,
+  sendSsoLoginHintEmail: sendSsoLoginHintEmailMock,
 }))
 
 const makeRequest = (body: unknown) =>
@@ -48,6 +50,7 @@ describe("POST /api/auth/forgot-password", () => {
     queryMock.mockResolvedValue({ rows: [] })
     createPasswordResetTokenMock.mockResolvedValue("password-reset-token")
     sendPasswordResetEmailMock.mockResolvedValue({ sent: true, skipped: false })
+    sendSsoLoginHintEmailMock.mockResolvedValue({ sent: true, skipped: false })
   })
 
   it("returns 403 when request is cross-origin", async () => {
@@ -109,7 +112,14 @@ describe("POST /api/auth/forgot-password", () => {
 
   it("returns generic success and sends reset email when user exists", async () => {
     queryMock.mockResolvedValueOnce({
-      rows: [{ id: "user-id-1", email: "user@example.com" }],
+      rows: [
+        {
+          id: "user-id-1",
+          email: "user@example.com",
+          has_password: true,
+          providers: [],
+        },
+      ],
     })
 
     const { POST } = await import("./route")
@@ -130,6 +140,34 @@ describe("POST /api/auth/forgot-password", () => {
       to: "user@example.com",
       resetUrl: "http://localhost:3000/account/reset-password?token=password-reset-token",
     })
+    expect(sendSsoLoginHintEmailMock).not.toHaveBeenCalled()
+  })
+
+  it("returns generic success and sends oauth login hint when account is oauth-only", async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "oauth-user-id-1",
+          email: "oauth@example.com",
+          has_password: false,
+          providers: ["google"],
+        },
+      ],
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(makeRequest({ email: "oauth@example.com" }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ ok: true })
+    expect(createPasswordResetTokenMock).not.toHaveBeenCalled()
+    expect(sendPasswordResetEmailMock).not.toHaveBeenCalled()
+    expect(sendSsoLoginHintEmailMock).toHaveBeenCalledWith({
+      to: "oauth@example.com",
+      loginUrl: "http://localhost:3000/account/login",
+      providers: ["google"],
+    })
   })
 
   it("returns the same generic success and does not send email when user does not exist", async () => {
@@ -143,5 +181,6 @@ describe("POST /api/auth/forgot-password", () => {
     expect(body).toEqual({ ok: true })
     expect(createPasswordResetTokenMock).not.toHaveBeenCalled()
     expect(sendPasswordResetEmailMock).not.toHaveBeenCalled()
+    expect(sendSsoLoginHintEmailMock).not.toHaveBeenCalled()
   })
 })

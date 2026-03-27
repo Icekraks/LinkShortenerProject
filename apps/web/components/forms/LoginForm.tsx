@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Button } from "@ui/button"
 import { Input } from "@ui/input"
 import { Label } from "@ui/label"
-// import SSOForm from "@components/forms/SSOForm"
 import { useRouter } from "next/navigation"
 import ForgotPasswordForm from "@components/forms/ForgotPasswordForm"
+import SSOForm from "@components/forms/SSOForm"
+import type { EnabledSsoProvider } from "@/lib/ssoProviders"
 
-const LoginForm = () => {
+const LoginForm = ({ providers }: { providers: EnabledSsoProvider[] }) => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -111,8 +112,7 @@ const LoginForm = () => {
           )}
         </form.Subscribe>
       </form>
-
-      {/* <SSOForm /> */}
+      <SSOForm intent="login" providers={providers} className="mt-3" />
       <ForgotPasswordForm />
       {submitError ? (
         <p className="mt-2 text-sm text-destructive" role="alert" aria-live="assertive">
