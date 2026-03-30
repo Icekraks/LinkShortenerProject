@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS links (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID,
   CONSTRAINT links_short_code_format CHECK (short_code ~ '^[a-z0-9]{4,}$')
 );
 
@@ -80,3 +80,18 @@ CREATE TABLE IF NOT EXISTS auth_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_auth_verification_tokens_email_purpose
   ON auth_verification_tokens (lower(email), purpose);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'links_user_id_fkey'
+  ) THEN
+    ALTER TABLE links
+      ADD CONSTRAINT links_user_id_fkey
+      FOREIGN KEY (user_id)
+      REFERENCES users(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
