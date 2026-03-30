@@ -44,11 +44,6 @@ export const LinkHistoryCard = (entry: LinkHistoryCardProps) => {
 
           <span className="block text-xs">{originalUrl}</span>
         </div>
-        <div>
-          <span className="text-sm text-muted-foreground">
-            Created: {new Date(entry.expiresAt).toLocaleDateString()}
-          </span>
-        </div>
         <div className="flex gap-2">
           <Button
             type="button"
