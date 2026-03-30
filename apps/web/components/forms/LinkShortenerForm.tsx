@@ -1,6 +1,7 @@
 "use client"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useForm } from "@tanstack/react-form-nextjs"
+import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@ui/button"
 import type { CreateShortLinkResponse, CreateShortLinkSuccessResponse } from "@/types/short-link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/select"
@@ -9,6 +10,8 @@ import { Input } from "@ui/input"
 import { toast } from "sonner"
 import LinkShortenerSuccess from "@components/forms/LinkShortenerSuccess"
 import { saveShortLinkToHistory } from "@lib/shortLinkHistory"
+import type { ActiveSession } from "@/types/account.type"
+import { syncAccountHistoryCacheAfterCreate } from "@/lib/linkShortenerCache"
 
 const validateUrl = (value: string) => {
   const raw = value.trim()
@@ -62,8 +65,42 @@ const isCreateShortLinkSuccessResponse = (
 }
 
 const LinkShortenerForm = () => {
+  const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
+  const [isSignedIn, setIsSignedIn] = useState<ActiveSession | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadSessionStatus = async () => {
+      try {
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+        })
+        const data = (await response.json().catch(() => null)) as {
+          isLoggedIn?: boolean
+          userId?: string | null
+        } | null
+
+        if (!isMounted) {
+          return
+        }
+
+        setIsSignedIn({ isLoggedIn: Boolean(data?.isLoggedIn), userId: data?.userId ?? null })
+      } catch {
+        if (isMounted) {
+          setIsSignedIn({ isLoggedIn: false, userId: null })
+        }
+      }
+    }
+
+    void loadSessionStatus()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const form = useForm({
     defaultValues: {
@@ -85,6 +122,7 @@ const LinkShortenerForm = () => {
           originalUrl: normalizedUrl,
           expiryHours: values.value.expiryHours,
           customShortCode: values.value.custom_short_code,
+          userId: isSignedIn?.isLoggedIn ? isSignedIn.userId : null,
         }),
       })
 
@@ -104,6 +142,8 @@ const LinkShortenerForm = () => {
       }
 
       saveShortLinkToHistory(data)
+      syncAccountHistoryCacheAfterCreate({ queryClient, createdLink: data, session: isSignedIn })
+
       setCreatedLink(data)
       toast.success("Short link created successfully")
       form.reset()
@@ -128,6 +168,13 @@ const LinkShortenerForm = () => {
         Enter the URL you want to shorten and select the expiry time. Once submitted, your shortened
         URL will be generated.
       </p>
+      {isSignedIn !== null ? (
+        <p className="text-sm mb-4">
+          {isSignedIn.isLoggedIn
+            ? "You are signed in."
+            : "You are not signed in. Sign in to manage links in your account dashboard."}
+        </p>
+      ) : null}
       <div className="flex flex-col md:flex-row items-start mt-2 gap-4">
         <form.Field
           name="url"

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS links (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT links_short_code_format CHECK (short_code ~ '^[a-z0-9]{4,}$')
 );
 

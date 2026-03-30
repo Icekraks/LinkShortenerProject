@@ -2,6 +2,7 @@ export type CreateShortLinkBody = {
   originalUrl?: string
   expiryHours?: number
   customShortCode?: string
+  userId?: string | null
 }
 
 export type CreateShortLinkSuccessResponse = {

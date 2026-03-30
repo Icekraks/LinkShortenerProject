@@ -87,3 +87,51 @@ export const isSignedAuthSessionTokenValid = (token: string) => {
     return false
   }
 }
+
+export const getSignedAuthSessionTokenUserId = (token: string) => {
+  const parts = token.split(".")
+
+  if (parts.length !== 3) {
+    return null
+  }
+
+  const [version, payloadBase64Url, signature] = parts
+
+  if (!version || !payloadBase64Url || !signature) {
+    return null
+  }
+
+  try {
+    const signedData = buildSignedData(version, payloadBase64Url)
+    const expectedSignature = buildSignature(signedData)
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8")
+    const actualBuffer = Buffer.from(signature, "utf8")
+
+    if (expectedBuffer.length !== actualBuffer.length) {
+      return null
+    }
+
+    if (!timingSafeEqual(expectedBuffer, actualBuffer)) {
+      return null
+    }
+
+    if (version !== SESSION_TOKEN_VERSION) {
+      return null
+    }
+
+    const payloadJson = fromBase64Url(payloadBase64Url)
+    const payload = JSON.parse(payloadJson) as { sub?: unknown; exp?: unknown }
+
+    if (typeof payload.sub !== "string" || typeof payload.exp !== "number") {
+      return null
+    }
+
+    if (payload.exp <= Math.floor(Date.now() / 1000)) {
+      return null
+    }
+
+    return payload.sub
+  } catch {
+    return null
+  }
+}

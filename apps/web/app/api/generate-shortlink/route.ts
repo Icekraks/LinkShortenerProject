@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     const expiryHours = body.expiryHours ?? 24
     const customShortCodeRaw = body.customShortCode?.trim()
     const customShortCode = customShortCodeRaw?.toLowerCase()
+    const userId = body.userId?.trim() || null
 
     if (!originalUrl) {
       return NextResponse.json({ error: "Valid URL is required" }, { status: 400 })
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
         original_url: string
         created_at: Date
         expires_at: Date | null
-      }>(INSERT_SHORT_LINK_WITH_CODE_QUERY, [idValue, shortCode, normalizedUrl, expiryDate])
+      }>(INSERT_SHORT_LINK_WITH_CODE_QUERY, [idValue, shortCode, normalizedUrl, expiryDate, userId])
 
       created = insertResult.rows[0]
 
