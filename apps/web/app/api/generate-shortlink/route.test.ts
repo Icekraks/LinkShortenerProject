@@ -10,6 +10,7 @@ const isSameOriginRequestMock = vi.fn()
 const isSelfDomainTargetMock = vi.fn()
 const encodeLinkIdToShortCodeMock = vi.fn()
 const qrCodeToDataURLMock = vi.fn()
+const getActiveSessionMock = vi.fn()
 
 vi.mock("@lib/db", () => ({
   dbPool: {
@@ -28,6 +29,10 @@ vi.mock("@/helpers/rateLimitHelpers", () => ({
 vi.mock("@/helpers/urlHelpers", () => ({
   isSameOriginRequest: isSameOriginRequestMock,
   isSelfDomainTarget: isSelfDomainTargetMock,
+}))
+
+vi.mock("@/lib/authSession", () => ({
+  getActiveSession: getActiveSessionMock,
 }))
 
 vi.mock("@lib/shortCode", () => ({
@@ -60,6 +65,10 @@ describe("POST /api/generate-shortlink", () => {
     isSelfDomainTargetMock.mockReturnValue(false)
     encodeLinkIdToShortCodeMock.mockReturnValue("abcd")
     qrCodeToDataURLMock.mockResolvedValue("data:image/png;base64,qr")
+    getActiveSessionMock.mockResolvedValue({
+      isLoggedIn: false,
+      userId: null,
+    })
   })
 
   it("returns 429 when rate limited", async () => {
@@ -172,7 +181,55 @@ describe("POST /api/generate-shortlink", () => {
     expect(body.qrCodeDataUrl).toBe("data:image/png;base64,qr")
     expect(releaseMock).toHaveBeenCalledTimes(1)
     expect(queryMock).toHaveBeenCalledWith("BEGIN")
+    expect(queryMock).toHaveBeenCalledWith(
+      "INSERT INTO links (id, short_code, original_url, expires_at) VALUES ($1, $2, $3, $4)",
+      [123, "abcd", "https://example.com/", expect.any(Date), null],
+    )
     expect(queryMock).toHaveBeenCalledWith("COMMIT")
+  })
+
+  it("passes authenticated user id when session is active", async () => {
+    getActiveSessionMock.mockResolvedValue({
+      isLoggedIn: true,
+      userId: "user_123",
+    })
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "123" }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 123,
+            short_code: "abcd",
+            original_url: "https://example.com/",
+            created_at: new Date("2026-01-01T00:00:00.000Z"),
+            expires_at: new Date("2026-01-02T00:00:00.000Z"),
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const { POST } = await import("./route")
+
+    const request = new NextRequest("http://localhost:3000/api/generate-shortlink", {
+      method: "POST",
+      body: JSON.stringify({
+        originalUrl: "https://example.com",
+        expiryHours: 24,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(201)
+    expect(queryMock).toHaveBeenCalledWith(
+      "INSERT INTO links (id, short_code, original_url, expires_at) VALUES ($1, $2, $3, $4)",
+      [123, "abcd", "https://example.com/", expect.any(Date), "user_123"],
+    )
   })
 
   it("returns 409 when custom short code already exists", async () => {

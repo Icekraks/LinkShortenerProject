@@ -2,7 +2,8 @@ import "server-only"
 
 import { cookies } from "next/headers"
 
-import { isSignedAuthSessionTokenValid } from "@lib/authToken"
+import { getSignedAuthSessionTokenUserId } from "@lib/authToken"
+import type { ActiveSession } from "@/types/account.type"
 
 export const AUTH_SESSION_COOKIE_NAME = "link_shortener_session"
 
@@ -21,17 +22,45 @@ export const deleteActiveSession = async () => {
 }
 
 export const hasActiveSession = async () => {
+  const { isLoggedIn } = await getActiveSession()
+  return isLoggedIn
+}
+
+export const getActiveSession = async (): Promise<ActiveSession> => {
   try {
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE_NAME)?.value
 
     if (!sessionToken) {
-      return false
+      return {
+        isLoggedIn: false,
+        userId: null,
+      }
     }
 
-    return isSignedAuthSessionTokenValid(sessionToken)
+    const userId = getSignedAuthSessionTokenUserId(sessionToken)
+
+    if (userId) {
+      return {
+        isLoggedIn: true,
+        userId,
+      }
+    }
+
+    return {
+      isLoggedIn: false,
+      userId: null,
+    }
   } catch (error) {
     console.error("Failed to verify auth session", error)
-    return false
+    return {
+      isLoggedIn: false,
+      userId: null,
+    }
   }
+}
+
+export const getActiveSessionUserId = async () => {
+  const { userId } = await getActiveSession()
+  return userId
 }

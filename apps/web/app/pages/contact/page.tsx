@@ -1,4 +1,4 @@
-import GreetingComponent from "@/components/GreetingComponent"
+import GreetingComponent from "@/components/pages/GreetingComponent"
 
 export default function Contact() {
   return (

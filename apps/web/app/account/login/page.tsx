@@ -1,4 +1,4 @@
-import LoginRegisterContainer from "@/components/accounts/LoginRegisterContainer"
+import LoginRegisterContainer from "@components/accounts/LoginRegister/LoginRegisterContainer"
 
 export default function Login() {
   return (

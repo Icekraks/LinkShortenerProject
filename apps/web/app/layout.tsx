@@ -10,6 +10,7 @@ import Footer from "@/components/layout/Footer"
 import { Toaster } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import QueryProvider from "@/components/providers/QueryProvider"
 
 export const metadata: Metadata = {
   title: "SniprUrl",
@@ -24,19 +25,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${lato.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider>
-          <Button
-            render={<Link href="#main-content" />}
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-ring"
-            nativeButton={false}
-          >
-            Skip to main content
-          </Button>
-          <Toaster />
-          <Header />
-          <main id="main-content">{children}</main>
-          <Footer />
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <Button
+              render={<Link href="#main-content" />}
+              className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-ring"
+              nativeButton={false}
+            >
+              Skip to main content
+            </Button>
+            <Toaster />
+            <Header />
+            <main id="main-content">{children}</main>
+            <Footer />
+          </ThemeProvider>
+        </QueryProvider>
         <Analytics />
         <SpeedInsights />
       </body>

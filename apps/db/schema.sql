@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS links (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
+  user_id UUID,
   CONSTRAINT links_short_code_format CHECK (short_code ~ '^[a-z0-9]{4,}$')
 );
 
@@ -16,6 +17,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_links_short_code_active
   WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_links_active_expires_at
   ON links (expires_at)
+  WHERE deleted_at IS NULL;
+  
+CREATE INDEX IF NOT EXISTS idx_links_user_id_created_at_active
+  ON links (user_id, created_at DESC)
   WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS rate_limit_events (
@@ -79,3 +84,18 @@ CREATE TABLE IF NOT EXISTS auth_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_auth_verification_tokens_email_purpose
   ON auth_verification_tokens (lower(email), purpose);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'links_user_id_fkey'
+  ) THEN
+    ALTER TABLE links
+      ADD CONSTRAINT links_user_id_fkey
+      FOREIGN KEY (user_id)
+      REFERENCES users(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;

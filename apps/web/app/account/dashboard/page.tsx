@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation"
 
-import { hasActiveSession } from "@/lib/authSession"
-import MobileDashboardNavigation from "@/components/navigations/MobileDashboardNavigation"
-import DesktopDashboardNavigation from "@/components/navigations/DesktopDashboardNavigation"
+import { getActiveSession } from "@/lib/authSession"
+import MobileDashboardNavigation from "@components/navigations/MobileDashboardNavigation"
+import DesktopDashboardNavigation from "@components/navigations/DesktopDashboardNavigation"
+import AccountHistorySection from "@components/accounts/Dashboard/AccountHistory/AccountHistorySection"
 
 export default async function AccountDashboard() {
-  const isLoggedIn = await hasActiveSession()
+  const session = await getActiveSession()
 
-  if (!isLoggedIn) {
+  if (!session.isLoggedIn || !session.userId) {
     redirect("/account/login")
   }
 
@@ -20,7 +21,9 @@ export default async function AccountDashboard() {
       <main className="flex min-h-screen w-full md:w-3/4 flex-col items-center gap-y-4 md:gap-y-8 mt-8 md:mt-0">
         <h1 className="text-xl font-bold font-mono">Dashboard</h1>
 
-        <section className="w-full">WIP Dashboard</section>
+        <section className="w-full">
+          <AccountHistorySection userId={session.userId} />
+        </section>
       </main>
     </div>
   )
