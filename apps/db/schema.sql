@@ -18,6 +18,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_links_short_code_active
 CREATE INDEX IF NOT EXISTS idx_links_active_expires_at
   ON links (expires_at)
   WHERE deleted_at IS NULL;
+  
+CREATE INDEX IF NOT EXISTS idx_links_user_id_created_at_active
+  ON links (user_id, created_at DESC)
+  WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS rate_limit_events (
   id BIGSERIAL PRIMARY KEY,

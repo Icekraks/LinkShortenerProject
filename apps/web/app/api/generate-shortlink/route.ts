@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 import { dbPool } from "@lib/db"
+import { getActiveSession } from "@/lib/authSession"
 import { CREATE_LINK_RATE_LIMIT, isCreateLinkRateLimited } from "@/helpers/rateLimitHelpers"
 import { isSameOriginRequest, isSelfDomainTarget } from "@/helpers/urlHelpers"
 import { QR_CODE_OPTIONS } from "@lib/qrCode"
@@ -61,7 +62,10 @@ export async function POST(request: NextRequest) {
     const expiryHours = body.expiryHours ?? 24
     const customShortCodeRaw = body.customShortCode?.trim()
     const customShortCode = customShortCodeRaw?.toLowerCase()
-    const userId = body.userId?.trim() || null
+
+    // Derive userId from signed session cookie, not from request body
+    const session = await getActiveSession()
+    const userId = session.isLoggedIn ? session.userId : null
 
     if (!originalUrl) {
       return NextResponse.json({ error: "Valid URL is required" }, { status: 400 })

@@ -20,7 +20,8 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        ok: true,
+        ok: false,
+        error: "Failed to retrieve session",
         isLoggedIn: false,
         userId: null,
       },

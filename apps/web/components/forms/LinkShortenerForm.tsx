@@ -10,7 +10,6 @@ import { Input } from "@ui/input"
 import { toast } from "sonner"
 import LinkShortenerSuccess from "@components/forms/LinkShortenerSuccess"
 import { saveShortLinkToHistory } from "@lib/shortLinkHistory"
-import type { ActiveSession } from "@/types/account.type"
 import { syncAccountHistoryCacheAfterCreate } from "@/lib/linkShortenerCache"
 
 const validateUrl = (value: string) => {
@@ -68,7 +67,7 @@ const LinkShortenerForm = () => {
   const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
-  const [isSignedIn, setIsSignedIn] = useState<ActiveSession | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
 
   useEffect(() => {
     let isMounted = true
@@ -79,6 +78,8 @@ const LinkShortenerForm = () => {
           method: "GET",
         })
         const data = (await response.json().catch(() => null)) as {
+          ok?: boolean
+          error?: string
           isLoggedIn?: boolean
           userId?: string | null
         } | null
@@ -87,10 +88,16 @@ const LinkShortenerForm = () => {
           return
         }
 
-        setIsSignedIn({ isLoggedIn: Boolean(data?.isLoggedIn), userId: data?.userId ?? null })
+        // Check ok flag to ensure successful response
+        if (data?.ok === false) {
+          setIsLoggedIn(false)
+          return
+        }
+
+        setIsLoggedIn(Boolean(data?.isLoggedIn))
       } catch {
         if (isMounted) {
-          setIsSignedIn({ isLoggedIn: false, userId: null })
+          setIsLoggedIn(false)
         }
       }
     }
@@ -122,7 +129,6 @@ const LinkShortenerForm = () => {
           originalUrl: normalizedUrl,
           expiryHours: values.value.expiryHours,
           customShortCode: values.value.custom_short_code,
-          userId: isSignedIn?.isLoggedIn ? isSignedIn.userId : null,
         }),
       })
 
@@ -142,7 +148,11 @@ const LinkShortenerForm = () => {
       }
 
       saveShortLinkToHistory(data)
-      syncAccountHistoryCacheAfterCreate({ queryClient, createdLink: data, session: isSignedIn })
+      syncAccountHistoryCacheAfterCreate({
+        queryClient,
+        createdLink: data,
+        session: { isLoggedIn, userId: null },
+      })
 
       setCreatedLink(data)
       toast.success("Short link created successfully")
@@ -168,9 +178,9 @@ const LinkShortenerForm = () => {
         Enter the URL you want to shorten and select the expiry time. Once submitted, your shortened
         URL will be generated.
       </p>
-      {isSignedIn !== null ? (
+      {isLoggedIn !== null ? (
         <p className="text-sm mb-4">
-          {isSignedIn.isLoggedIn
+          {isLoggedIn
             ? "You are signed in."
             : "You are not signed in. Sign in to manage links in your account dashboard."}
         </p>

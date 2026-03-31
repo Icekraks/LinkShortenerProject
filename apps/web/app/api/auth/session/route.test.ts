@@ -41,7 +41,12 @@ describe("GET /api/auth/session", () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({ ok: true, isLoggedIn: false, userId: null })
+    expect(body).toEqual({
+      ok: false,
+      error: "Failed to retrieve session",
+      isLoggedIn: false,
+      userId: null,
+    })
   })
 
   it("returns userId=null when session is active but token payload cannot be decoded", async () => {
