@@ -27,17 +27,17 @@ export const hasActiveSession = async () => {
 }
 
 export const getActiveSession = async (): Promise<ActiveSession> => {
-  try {
-    const cookieStore = await cookies()
-    const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE_NAME)?.value
+  const cookieStore = await cookies()
+  const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE_NAME)?.value
 
-    if (!sessionToken) {
-      return {
-        isLoggedIn: false,
-        userId: null,
-      }
+  if (!sessionToken) {
+    return {
+      isLoggedIn: false,
+      userId: null,
     }
+  }
 
+  try {
     const userId = getSignedAuthSessionTokenUserId(sessionToken)
 
     if (userId) {
@@ -52,7 +52,7 @@ export const getActiveSession = async (): Promise<ActiveSession> => {
       userId: null,
     }
   } catch (error) {
-    console.error("Failed to verify auth session", error)
+    console.error("Failed to verify auth session token", error)
     return {
       isLoggedIn: false,
       userId: null,

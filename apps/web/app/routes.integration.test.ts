@@ -18,6 +18,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: "localhost:3000" }),
+  cookies: async () => ({ get: () => undefined }),
 }))
 
 const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL
