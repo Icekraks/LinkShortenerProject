@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import { AccountLinkHistoryCard } from "@components/accounts/Dashboard/AccountHistory/AccountLinkHistoryCard"
 import {
-  ACCOUNT_HISTORY_QUERY_KEY,
+  getAccountHistoryQueryKey,
   type AccountHistoryItem,
   type AccountHistoryResponse,
 } from "@/lib/accountHistoryQuery"
@@ -32,13 +32,13 @@ const fetchAccountHistory = async () => {
   return body.history
 }
 
-const AccountHistoryTable = () => {
+const AccountHistoryTable = ({ userId }: { userId: string }) => {
   const {
     data: history = [],
     isPending,
     isError,
   } = useQuery({
-    queryKey: ACCOUNT_HISTORY_QUERY_KEY,
+    queryKey: getAccountHistoryQueryKey(userId),
     queryFn: fetchAccountHistory,
   })
 

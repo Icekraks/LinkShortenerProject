@@ -67,7 +67,7 @@ const LinkShortenerForm = () => {
   const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -151,7 +151,7 @@ const LinkShortenerForm = () => {
       syncAccountHistoryCacheAfterCreate({
         queryClient,
         createdLink: data,
-        session: { isLoggedIn, userId: null },
+        session: { isLoggedIn: isLoggedIn ?? false, userId: null },
       })
 
       setCreatedLink(data)

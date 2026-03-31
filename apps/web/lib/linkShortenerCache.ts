@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 
 import {
-  ACCOUNT_HISTORY_QUERY_KEY,
+  getAccountHistoryQueryKey,
   mapShortLinkToAccountHistoryItem,
   prependAndDedupeAccountHistory,
   type AccountHistoryItem,
@@ -18,13 +18,16 @@ export const syncAccountHistoryCacheAfterCreate = ({
   createdLink: CreateShortLinkSuccessResponse
   session: ActiveSession | null
 }) => {
-  if (!session?.isLoggedIn) {
+  if (!session?.isLoggedIn || !session.userId) {
     return
   }
 
   const nextItem = mapShortLinkToAccountHistoryItem(createdLink)
 
-  queryClient.setQueryData<AccountHistoryItem[]>(ACCOUNT_HISTORY_QUERY_KEY, (current) => {
-    return prependAndDedupeAccountHistory(current ?? [], nextItem)
-  })
+  queryClient.setQueryData<AccountHistoryItem[]>(
+    getAccountHistoryQueryKey(session.userId),
+    (current) => {
+      return prependAndDedupeAccountHistory(current ?? [], nextItem)
+    },
+  )
 }

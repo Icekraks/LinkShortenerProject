@@ -2,7 +2,7 @@ import "server-only"
 
 import { cookies } from "next/headers"
 
-import { getSignedAuthSessionTokenUserId, isSignedAuthSessionTokenValid } from "@lib/authToken"
+import { getSignedAuthSessionTokenUserId } from "@lib/authToken"
 import type { ActiveSession } from "@/types/account.type"
 
 export const AUTH_SESSION_COOKIE_NAME = "link_shortener_session"
@@ -48,7 +48,7 @@ export const getActiveSession = async (): Promise<ActiveSession> => {
     }
 
     return {
-      isLoggedIn: isSignedAuthSessionTokenValid(sessionToken),
+      isLoggedIn: false,
       userId: null,
     }
   } catch (error) {

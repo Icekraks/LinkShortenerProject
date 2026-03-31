@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { getAccountHistoryQueryKey } from "@/lib/accountHistoryQuery"
 import { syncAccountHistoryCacheAfterCreate } from "@/lib/linkShortenerCache"
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
 
@@ -32,14 +33,19 @@ describe("syncAccountHistoryCacheAfterCreate", () => {
 
   it("updates account-history cache when session is logged in", () => {
     const setQueryData = vi.fn()
+    const userId = "user-id-1"
 
     syncAccountHistoryCacheAfterCreate({
       queryClient: { setQueryData },
       createdLink: makeCreatedLink(),
-      session: { isLoggedIn: true, userId: "user-id-1" },
+      session: { isLoggedIn: true, userId },
     })
 
     expect(setQueryData).toHaveBeenCalledTimes(1)
+    expect(setQueryData).toHaveBeenCalledWith(
+      getAccountHistoryQueryKey(userId),
+      expect.any(Function),
+    )
 
     const [, updater] = setQueryData.mock.calls[0] as [
       readonly string[],
@@ -132,5 +138,17 @@ describe("syncAccountHistoryCacheAfterCreate", () => {
     expect(updated).toHaveLength(1)
     expect(updated[0].id).toBe("200")
     expect(updated[0].originalUrl).toBe("https://example.com/new1")
+  })
+
+  it("does not update query cache when logged-in session has no userId", () => {
+    const setQueryData = vi.fn()
+
+    syncAccountHistoryCacheAfterCreate({
+      queryClient: { setQueryData },
+      createdLink: makeCreatedLink(),
+      session: { isLoggedIn: true, userId: null },
+    })
+
+    expect(setQueryData).not.toHaveBeenCalled()
   })
 })

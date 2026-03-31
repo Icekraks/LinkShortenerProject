@@ -1,7 +1,11 @@
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
 import type { ShortLinkHistoryEntry } from "@/lib/shortLinkHistory"
 
-export const ACCOUNT_HISTORY_QUERY_KEY = ["account-history"] as const
+export const ACCOUNT_HISTORY_QUERY_KEY = "account-history"
+
+export const getAccountHistoryQueryKey = (userId: string) => {
+  return [ACCOUNT_HISTORY_QUERY_KEY, userId] as const
+}
 
 export type AccountHistoryItem = ShortLinkHistoryEntry & {
   createdAt: string
