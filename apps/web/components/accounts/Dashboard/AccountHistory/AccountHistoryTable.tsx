@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
-import { AccountLinkHistoryCard } from "@components/accounts/Dashboard/AccountHistory/AccountLinkHistoryCard"
 import {
   getAccountHistoryQueryKey,
   type AccountHistoryItem,
