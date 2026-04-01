@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query"
 
 import {
   getAccountHistoryQueryKey,
+  getAccountPermanentLinksQueryKey,
   mapShortLinkToAccountHistoryItem,
   prependAndDedupeAccountHistory,
   type AccountHistoryItem,
@@ -30,4 +31,13 @@ export const syncAccountHistoryCacheAfterCreate = ({
       return prependAndDedupeAccountHistory(current ?? [], nextItem)
     },
   )
+
+  if (createdLink.isPermanent || createdLink.expiryHours === -1) {
+    queryClient.setQueryData<AccountHistoryItem[]>(
+      getAccountPermanentLinksQueryKey(session.userId),
+      (current) => {
+        return prependAndDedupeAccountHistory(current ?? [], nextItem)
+      },
+    )
+  }
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { getAccountHistoryQueryKey } from "@/lib/accountHistoryQuery"
+import {
+  getAccountHistoryQueryKey,
+  getAccountPermanentLinksQueryKey,
+} from "@/lib/accountHistoryQuery"
 import { syncAccountHistoryCacheAfterCreate } from "@/lib/linkShortenerCache"
 import type { CreateShortLinkSuccessResponse } from "@/types/short-link"
 
@@ -88,6 +91,29 @@ describe("syncAccountHistoryCacheAfterCreate", () => {
       expiresAt: null,
     })
     expect(updated).toHaveLength(2)
+  })
+
+  it("updates permanent-links cache when created link is permanent", () => {
+    const setQueryData = vi.fn()
+    const userId = "user-id-1"
+
+    syncAccountHistoryCacheAfterCreate({
+      queryClient: { setQueryData },
+      createdLink: makeCreatedLink({ expiryHours: -1, isPermanent: true }),
+      session: { isLoggedIn: true, userId },
+    })
+
+    expect(setQueryData).toHaveBeenCalledTimes(2)
+    expect(setQueryData).toHaveBeenNthCalledWith(
+      1,
+      getAccountHistoryQueryKey(userId),
+      expect.any(Function),
+    )
+    expect(setQueryData).toHaveBeenNthCalledWith(
+      2,
+      getAccountPermanentLinksQueryKey(userId),
+      expect.any(Function),
+    )
   })
 
   it("replaces existing item with same shortCode via updater dedupe", () => {
