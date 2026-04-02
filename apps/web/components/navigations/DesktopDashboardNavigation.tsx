@@ -1,5 +1,7 @@
 import LogoutButton from "@/components/buttons/LogoutButton"
 import { cn } from "@/lib/utils"
+import { Button } from "@ui/button"
+import Link from "next/dist/client/link"
 
 type LinkItem = {
   name: string
@@ -25,9 +27,18 @@ const DesktopDashboardNavigation = ({ links, className = "" }: DesktopDashboardN
       </p>
 
       <nav aria-label="Account actions" className="mt-6">
-        <ul>
-          {links.map((link) => (
-            <li key={link.name}></li>
+        <ul className="flex flex-col gap-y-4">
+          {links.map((link, id) => (
+            <li key={id}>
+              <Button
+                variant="outline"
+                className="w-full"
+                render={<Link href={link.href} />}
+                nativeButton={false}
+              >
+                {link.name}
+              </Button>
+            </li>
           ))}
           <li>
             <LogoutButton />

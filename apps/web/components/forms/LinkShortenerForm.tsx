@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import LinkShortenerSuccess from "@components/forms/LinkShortenerSuccess"
 import { saveShortLinkToHistory } from "@lib/shortLinkHistory"
 import { syncAccountHistoryCacheAfterCreate } from "@/lib/linkShortenerCache"
+import type { ActiveSession } from "@/types/account.type"
 
 const validateUrl = (value: string) => {
   const raw = value.trim()
@@ -32,7 +33,7 @@ const validateUrl = (value: string) => {
   return undefined
 }
 
-const expiryOptions = [
+const baseExpiryOptions = [
   { value: 1, label: "1 hour" },
   { value: 4, label: "4 hours" },
   { value: 6, label: "6 hours" },
@@ -40,8 +41,17 @@ const expiryOptions = [
   { value: 24, label: "24 hours" },
 ]
 
+const getExpiryOptions = (loggedIn: boolean | null) => {
+  const options = [...baseExpiryOptions]
+  if (loggedIn) {
+    options.push({ value: -1, label: "Permanent" })
+  }
+  return options
+}
+
 const getExpiryLabel = (value: number) => {
-  return expiryOptions.find((option) => option.value === value)?.label ?? `${value} hours`
+  const allOptions = [...baseExpiryOptions, { value: -1, label: "Permanent" }]
+  return allOptions.find((option) => option.value === value)?.label ?? `${value} hours`
 }
 
 const isDataUrl = (value: string) => value.startsWith("data:")
@@ -67,7 +77,7 @@ const LinkShortenerForm = () => {
   const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<CreateShortLinkSuccessResponse | null>(null)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -90,14 +100,17 @@ const LinkShortenerForm = () => {
 
         // Check ok flag to ensure successful response
         if (data?.ok === false) {
-          setIsLoggedIn(false)
+          setActiveSession({ isLoggedIn: false, userId: null })
           return
         }
 
-        setIsLoggedIn(Boolean(data?.isLoggedIn))
+        setActiveSession({
+          isLoggedIn: Boolean(data?.isLoggedIn),
+          userId: data?.userId ?? null,
+        })
       } catch {
         if (isMounted) {
-          setIsLoggedIn(false)
+          setActiveSession({ isLoggedIn: false, userId: null })
         }
       }
     }
@@ -151,7 +164,7 @@ const LinkShortenerForm = () => {
       syncAccountHistoryCacheAfterCreate({
         queryClient,
         createdLink: data,
-        session: { isLoggedIn: isLoggedIn ?? false, userId: null },
+        session: activeSession,
       })
 
       setCreatedLink(data)
@@ -178,9 +191,9 @@ const LinkShortenerForm = () => {
         Enter the URL you want to shorten and select the expiry time. Once submitted, your shortened
         URL will be generated.
       </p>
-      {isLoggedIn !== null ? (
+      {activeSession !== null ? (
         <p className="text-sm mb-4">
-          {isLoggedIn
+          {activeSession.isLoggedIn
             ? "You are signed in."
             : "You are not signed in. Sign in to manage links in your account dashboard."}
         </p>
@@ -278,7 +291,7 @@ const LinkShortenerForm = () => {
                     <SelectValue>{getExpiryLabel(field.state.value)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {expiryOptions.map((option) => (
+                    {getExpiryOptions(activeSession?.isLoggedIn ?? null).map((option) => (
                       <SelectItem key={option.value} value={option.value.toString()}>
                         {option.label}
                       </SelectItem>

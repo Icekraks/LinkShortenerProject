@@ -14,6 +14,7 @@ export type CreateShortLinkSuccessResponse = {
   shortPath: string
   shortUrl: string
   qrCodeDataUrl?: string
+  isPermanent: boolean
 }
 
 export type CreateShortLinkErrorResponse = {

@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CreateShortLinkBody
     const originalUrl = body.originalUrl?.trim()
     const expiryHours = body.expiryHours ?? 24
+    const isPermanent = expiryHours === -1
     const customShortCodeRaw = body.customShortCode?.trim()
     const customShortCode = customShortCodeRaw?.toLowerCase()
 
@@ -88,11 +89,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!Number.isInteger(expiryHours) || !ALLOWED_EXPIRY_HOURS.has(expiryHours)) {
-      return NextResponse.json(
-        { error: "expiryHours must be one of: 1, 4, 6, 12, 24" },
-        { status: 400 },
+    if (isPermanent) {
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Must be logged in to create permanent links" },
+          { status: 401 },
+        )
+      }
+
+      // Check permanent link count for this user
+      const countResult = await dbPool.query<{ count: number }>(
+        "SELECT COUNT(*)::int as count FROM links WHERE user_id = $1 AND deleted_at IS NULL AND expires_at IS NULL",
+        [userId],
       )
+
+      const permanentLinkCount = countResult.rows[0]?.count ?? 0
+
+      if (permanentLinkCount >= 4) {
+        return NextResponse.json(
+          {
+            error:
+              "You have reached the maximum of 4 permanent links. Delete an existing permanent link to create a new one.",
+          },
+          { status: 400 },
+        )
+      }
+    } else {
+      if (!Number.isInteger(expiryHours) || !ALLOWED_EXPIRY_HOURS.has(expiryHours)) {
+        return NextResponse.json(
+          { error: "expiryHours must be one of: 1, 4, 6, 12, 24" },
+          { status: 400 },
+        )
+      }
     }
 
     let targetUrl: URL
@@ -109,8 +137,13 @@ export async function POST(request: NextRequest) {
 
     const normalizedUrl = targetUrl.toString()
 
-    const expiryDate = new Date()
-    expiryDate.setHours(expiryDate.getHours() + expiryHours)
+    const expiryDate = isPermanent
+      ? null
+      : (() => {
+          const date = new Date()
+          date.setHours(date.getHours() + expiryHours)
+          return date
+        })()
 
     const client = await dbPool.connect()
     let created:
@@ -181,11 +214,12 @@ export async function POST(request: NextRequest) {
         shortCode: created.short_code,
         originalUrl: created.original_url,
         createdAt: created.created_at.toISOString(),
-        expiryHours,
+        expiryHours: isPermanent ? -1 : expiryHours,
         expiresAt: created.expires_at?.toISOString() ?? null,
         shortPath,
         shortUrl,
         qrCodeDataUrl,
+        isPermanent,
       },
       { status: 201 },
     )

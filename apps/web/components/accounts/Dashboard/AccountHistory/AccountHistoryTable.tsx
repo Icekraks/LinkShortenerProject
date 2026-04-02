@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query"
 
-import { AccountLinkHistoryCard } from "@components/accounts/Dashboard/AccountHistory/AccountLinkHistoryCard"
 import {
   getAccountHistoryQueryKey,
   type AccountHistoryItem,
   type AccountHistoryResponse,
 } from "@/lib/accountHistoryQuery"
+import { AccountLinkCard } from "../AccountLinkCard"
 
 const fetchAccountHistory = async () => {
   const response = await fetch("/api/account/history", {
@@ -34,13 +34,15 @@ const fetchAccountHistory = async () => {
 
 const AccountHistoryTable = ({ userId }: { userId: string }) => {
   const {
-    data: history = [],
+    data: fetchedHistory,
     isPending,
     isError,
   } = useQuery({
     queryKey: getAccountHistoryQueryKey(userId),
     queryFn: fetchAccountHistory,
   })
+
+  const history = fetchedHistory ?? []
 
   if (isPending) {
     return <p className="text-sm text-gray-500">Loading history...</p>
@@ -58,11 +60,7 @@ const AccountHistoryTable = ({ userId }: { userId: string }) => {
     <div className="overflow-x-auto">
       <ol>
         {history.map((item) => (
-          <AccountLinkHistoryCard
-            key={item.id}
-            {...item}
-            className={"border-b border-gray-200 last:border-0"}
-          />
+          <AccountLinkCard key={item.id} {...item} />
         ))}
       </ol>
     </div>
