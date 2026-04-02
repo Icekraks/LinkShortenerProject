@@ -98,15 +98,15 @@ const AccountLinksTable = ({ userId }: { userId: string }) => {
   )
 
   if (isPending) {
-    return <p className="text-sm text-gray-500">Loading history...</p>
+    return <p className="text-sm text-gray-500">Loading permanent links...</p>
   }
 
   if (isError) {
-    return <p className="text-sm text-red-500">Failed to load account history.</p>
+    return <p className="text-sm text-red-500">Failed to load account permanent links.</p>
   }
 
   if (links.length === 0) {
-    return <p className="text-sm text-gray-500">No history available.</p>
+    return <p className="text-sm text-gray-500">No permanent links available.</p>
   }
 
   return (

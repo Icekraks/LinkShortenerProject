@@ -99,11 +99,11 @@ export async function POST(request: NextRequest) {
 
       // Check permanent link count for this user
       const countResult = await dbPool.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM links WHERE user_id = $1 AND deleted_at IS NULL AND expires_at IS NULL",
+        "SELECT COUNT(*)::int as count FROM links WHERE user_id = $1 AND deleted_at IS NULL AND expires_at IS NULL",
         [userId],
       )
 
-      const permanentLinkCount = parseInt(countResult.rows[0]?.count.toString() ?? "0", 10)
+      const permanentLinkCount = countResult.rows[0]?.count ?? 0
 
       if (permanentLinkCount >= 4) {
         return NextResponse.json(

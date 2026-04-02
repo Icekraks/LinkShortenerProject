@@ -19,13 +19,13 @@ export default async function AccountDashboard() {
       <section className="w-full flex flex-col gap-y-6 md:gap-y-8">
         <AccountSectionCard
           title="Your Permanent Links"
-          description="This section displays your account details."
+          description="View and manage your permanent links."
         >
           <AccountLinksTable userId={userId} />
         </AccountSectionCard>
         <AccountSectionCard
           title="Your Link History"
-          description="This section displays your created short links history."
+          description="View and manage your link history."
         >
           <AccountHistoryTable userId={userId} />
         </AccountSectionCard>

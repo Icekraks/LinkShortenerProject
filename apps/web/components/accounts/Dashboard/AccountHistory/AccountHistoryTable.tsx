@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import {
@@ -43,8 +42,7 @@ const AccountHistoryTable = ({ userId }: { userId: string }) => {
     queryFn: fetchAccountHistory,
   })
 
-  const [localHistory, _setLocalHistory] = useState<AccountHistoryItem[] | null>(null)
-  const history = localHistory ?? fetchedHistory ?? []
+  const history = fetchedHistory ?? []
 
   if (isPending) {
     return <p className="text-sm text-gray-500">Loading history...</p>
